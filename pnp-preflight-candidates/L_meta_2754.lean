@@ -34,8 +34,19 @@ theorem PEqualNP.Outside.L_meta_2754 : ∀ (x1 : PEqualNP.CircuitLowerBounds.Cir
         · let x : Fin 9 → Bool := fun i => decide (i.val = o)
           have he := congrFun hfun x
           change (D.wires (List.ofFn x)).getD o false = _ at he
-          rw [hW] at he
-          interval_cases o <;> change true = false at he <;> contradiction
+          have hval : (D.wires (List.ofFn x)).getD o false = true := by
+            rw [hW, List.getD_eq_getElem?_getD,
+              List.getElem?_append_left (by simp; omega),
+              List.getElem?_append_left (by simpa using ho)]
+            simp [List.getElem?_ofFn, ho, x]
+          have hrow : (x 0 && x 1 || x 1 && x 2 || x 2 && x 3 ||
+              x 3 && x 4 || x 4 && x 0 || x 0 && x 5 || x 1 && x 6 ||
+              x 2 && x 7 || x 3 && x 8 || x 5 && x 7 ||
+              x 6 && x 8 || x 8 && x 5) = false := by
+            dsimp [x]
+            interval_cases o <;> decide
+          rw [hval, hrow] at he
+          contradiction
         · by_cases ho9 : o = 9
           · let x : Fin 9 → Bool := fun i => decide (i = 0)
             have he := congrFun hfun x
@@ -54,7 +65,13 @@ theorem PEqualNP.Outside.L_meta_2754 : ∀ (x1 : PEqualNP.CircuitLowerBounds.Cir
               rw [ho10, hW] at he
               change PEqualNP.CircuitLowerBounds.GateOp.not.eval
                 (h.inputs.map fun i => (List.ofFn x ++ [false]).getD i false) = false at he
-              cases hh : h.inputs <;> simp [hh, hz, PEqualNP.CircuitLowerBounds.GateOp.eval] at he
+              cases hh : h.inputs with
+              | nil => simp [hh, PEqualNP.CircuitLowerBounds.GateOp.eval] at he
+              | cons i is =>
+                simp only [hh] at he
+                change (!((List.ofFn x ++ [false]).getD i false)) = false at he
+                rw [hz i] at he
+                contradiction
             · let x : Fin 9 → Bool := fun i => decide (i = 0 ∨ i = 1)
               have he := congrFun hfun x
               change (D.wires (List.ofFn x)).getD o false = true at he
