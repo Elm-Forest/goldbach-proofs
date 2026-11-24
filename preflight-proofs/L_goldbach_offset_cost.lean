@@ -11,8 +11,11 @@ theorem PEqualNP.Outside.L_goldbach_offset_cost :
     have h1 := hasDerivAt_id t
     have h2 := (h1.pow 2).const_mul X
     have h3 := ((h1.pow 3).const_mul (X ^ 2)).div_const 3
-    convert (h1.add h2).add h3 using 1 <;> simp [F, id] <;> ring
+    convert (h1.add h2).add h3 using 1 <;>
+      first
+      | (funext y; simp [F, id, Pi.add_apply] <;> ring)
+      | (simp [F, id] <;> ring)
   have hc : Continuous (fun t : ℝ => (1 + X * t) ^ 2) := by fun_prop
   rw [intervalIntegral.integral_eq_sub_of_hasDerivAt
-    (fun t _ => hd t) hc.intervalIntegrable]
+    (fun t _ => hd t) (hc.intervalIntegrable 0 h)]
   simp [F]

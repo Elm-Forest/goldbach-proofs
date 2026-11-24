@@ -9,7 +9,7 @@ theorem PEqualNP.Outside.L_goldbach_integrated_loss :
   have hi : intervalIntegral (fun t => g t - D) a b MeasureTheory.volume ≤
       intervalIntegral f a b MeasureTheory.volume :=
     intervalIntegral.integral_mono_on hab
-      (hg.sub hconst).intervalIntegrable hf.intervalIntegrable h
-  rw [intervalIntegral.integral_sub hg.intervalIntegrable hconst.intervalIntegrable,
+      ((hg.sub hconst).intervalIntegrable a b) (hf.intervalIntegrable a b) h
+  rw [intervalIntegral.integral_sub (hg.intervalIntegrable a b) (hconst.intervalIntegrable a b),
       intervalIntegral.integral_const, smul_eq_mul] at hi
   exact hi
