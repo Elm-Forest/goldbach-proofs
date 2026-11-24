@@ -12,30 +12,36 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - pr: 7624
-            commit: 679dc4cd59439fbcd5e3d0ccdb4feeeee91f87e1
-            module: PEqualNP.Outside.R_meta_2276_726
-          - pr: 7661
-            commit: d7b2e3d3cdb06a8bac0eccdd7faf8811a1b67db4
-            module: PEqualNP.Outside.R_meta_2436_727
+        module: [R_meta_2276_726, L_meta_2754, R_meta_3648_1, R_meta_2346_1]
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: open-goat/pequalnp-proofs
-          ref: refs/pull/${{ matrix.pr }}/head
+          path: preflight
           persist-credentials: false
-      - name: Verify pinned PR head
-        run: test "$(git rev-parse HEAD)" = "${{ matrix.commit }}"
+      - uses: actions/checkout@v4
+        with:
+          repository: open-goat/pequalnp-proofs
+          ref: 2e42ffa3ca973b27a0b68f742315b6787e2c1938
+          path: upstream
+          persist-credentials: false
+      - name: Copy candidate
+        run: |
+          f="${{ matrix.module }}.lean"
+          cp "preflight/pnp-preflight-candidates/$f" "upstream/lean/PEqualNP/Outside/$f"
       - name: Install Lean on cloud runner
         run: |
           curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --no-modify-path --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
       - name: Download Mathlib cache
-        working-directory: lean
+        working-directory: upstream/lean
         run: |
           elan toolchain install "$(cat lean-toolchain)"
           lake exe cache get
-      - name: Compile submitted proof
-        working-directory: lean
-        run: lake build ${{ matrix.module }}
+      - name: Compile candidate
+        working-directory: upstream/lean
+        run: lake build PEqualNP.Outside.${{ matrix.module }}
+      - name: Audit theorem axioms
+        working-directory: upstream/lean
+        run: |
+          printf 'import PEqualNP.Outside.%s\n#print axioms PEqualNP.Outside.%s\n' "${{ matrix.module }}" "${{ matrix.module }}" > /tmp/PNPAxioms.lean
+          lake env lean /tmp/PNPAxioms.lean
