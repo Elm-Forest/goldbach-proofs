@@ -38,7 +38,8 @@ theorem PEqualNP.Outside.L_meta_2754 : ∀ (x1 : PEqualNP.CircuitLowerBounds.Cir
             rw [hW, List.getD_eq_getElem?_getD,
               List.getElem?_append_left (by simp; omega),
               List.getElem?_append_left (by simpa using ho)]
-            simp [List.getElem?_ofFn, ho, x]
+            simp [ho, x]
+            interval_cases o <;> decide
           have hrow : (x 0 && x 1 || x 1 && x 2 || x 2 && x 3 ||
               x 3 && x 4 || x 4 && x 0 || x 0 && x 5 || x 1 && x 6 ||
               x 2 && x 7 || x 3 && x 8 || x 5 && x 7 ||
