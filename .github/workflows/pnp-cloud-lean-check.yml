@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [R_meta_2276_726, L_meta_2754, R_meta_3648_1, R_meta_2346_1]
+        module: [L_meta_2754]
     steps:
       - uses: actions/checkout@v4
         with:

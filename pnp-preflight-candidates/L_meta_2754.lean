@@ -35,7 +35,7 @@ theorem PEqualNP.Outside.L_meta_2754 : ∀ (x1 : PEqualNP.CircuitLowerBounds.Cir
           have he := congrFun hfun x
           change (D.wires (List.ofFn x)).getD o false = _ at he
           rw [hW] at he
-          interval_cases o <;> exact Bool.noConfusion he
+          interval_cases o <;> change true = false at he <;> contradiction
         · by_cases ho9 : o = 9
           · let x : Fin 9 → Bool := fun i => decide (i = 0)
             have he := congrFun hfun x
@@ -54,8 +54,7 @@ theorem PEqualNP.Outside.L_meta_2754 : ∀ (x1 : PEqualNP.CircuitLowerBounds.Cir
               rw [ho10, hW] at he
               change PEqualNP.CircuitLowerBounds.GateOp.not.eval
                 (h.inputs.map fun i => (List.ofFn x ++ [false]).getD i false) = false at he
-              simp only [hz, PEqualNP.CircuitLowerBounds.GateOp.eval] at he
-              cases h.inputs <;> simp at he
+              cases hh : h.inputs <;> simp [hh, hz, PEqualNP.CircuitLowerBounds.GateOp.eval] at he
             · let x : Fin 9 → Bool := fun i => decide (i = 0 ∨ i = 1)
               have he := congrFun hfun x
               change (D.wires (List.ofFn x)).getD o false = true at he
