@@ -105,7 +105,7 @@ theorem PEqualNP.Outside.L_goldbach_reflection_grid_thinning :
     · rcases hs k with h1 | h1 <;> simp [v, hk, h1] <;>
         (first | nlinarith | constructor <;> nlinarith)
     · by_cases he : k=n
-      · simp [v, hk, he, h]
+      · simp [v, he, hw n]
       · rcases hs (2*n-k) with h1 | h1 <;> simp [v, hk, he, h1] <;>
           (first | nlinarith | constructor <;> nlinarith)
   have hc : v n = 0 := by simp [v]
