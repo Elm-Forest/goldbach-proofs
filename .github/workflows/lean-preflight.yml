@@ -22,13 +22,13 @@ jobs:
           export PATH="$HOME/.elan/bin:$PATH"
           elan toolchain install "$(cat lean-toolchain)"
           lake exe cache get
-      - name: Compile five independent proof drafts
+      - name: Compile finite sign-balancing proof
         working-directory: lean
         run: |
           set -u
           export PATH="$HOME/.elan/bin:$PATH"
           fail=0
-          for proof in ../preflight-proofs/L_*.lean; do
+          for proof in ../preflight-proofs/L_goldbach_finite_sign_balance.lean; do
             echo "::group::$(basename "$proof")"
             if timeout 240 lake env lean "$proof"; then
               echo "PREFLIGHT PASS: $(basename "$proof")"

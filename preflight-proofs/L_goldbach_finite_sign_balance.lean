@@ -35,14 +35,14 @@ theorem PEqualNP.Outside.L_goldbach_finite_sign_balance :
         linarith
     refine ⟨fun k => if k = n then z else s k, ?_, ?_⟩
     · intro k
-      split_ifs
-      · exact hz
-      · exact hs k
+      change (if k = n then z else s k) = 1 ∨ (if k = n then z else s k) = -1
+      by_cases hk : k = n
+      · simpa [hk] using hz
+      · simpa [hk] using hs k
     · have hinner (j : Fin m) :
           (∑ k ∈ Finset.range (n+1), (if k = n then z else s k) * b k j) =
           A j + z * b n j := by
         rw [Finset.sum_range_succ]
-        simp only [if_pos rfl]
         have hsum : (∑ k ∈ Finset.range n, (if k = n then z else s k) * b k j) =
             A j := by
           unfold A
@@ -50,6 +50,7 @@ theorem PEqualNP.Outside.L_goldbach_finite_sign_balance :
           intro k hk
           simp [Nat.ne_of_lt (Finset.mem_range.mp hk)]
         rw [hsum]
+        simp
       calc
         _ = E z := by
           unfold E
@@ -57,4 +58,4 @@ theorem PEqualNP.Outside.L_goldbach_finite_sign_balance :
         _ ≤ (∑ j, (A j)^2) + ∑ j, (b n j)^2 := he
         _ ≤ ∑ j, ∑ k ∈ Finset.range (n+1), (b k j)^2 := by
           simp only [Finset.sum_range_succ, Finset.sum_add_distrib]
-          exact add_le_add_right hb _
+          exact add_le_add hb (le_refl (∑ j, (b n j)^2))
