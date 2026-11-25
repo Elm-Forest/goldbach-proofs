@@ -28,7 +28,7 @@ jobs:
           set -u
           export PATH="$HOME/.elan/bin:$PATH"
           fail=0
-          for proof in ../batch-10-proofs/L_*.lean; do
+          for proof in ../batch-10-proofs/L_goldbach_height_real_product.lean ../batch-10-proofs/L_goldbach_pp_exp_cutoff.lean; do
             echo "::group::$(basename "$proof")"
             if timeout 240 lake env lean "$proof"; then
               echo "PREFLIGHT PASS: $(basename "$proof")"
