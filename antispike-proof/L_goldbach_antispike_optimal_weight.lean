@@ -44,6 +44,7 @@ theorem PEqualNP.Outside.L_goldbach_antispike_optimal_weight :
             simp only [mul_pow, Finset.mul_sum, P]
           _ = (a*R)^2 := by rw [← hR2, mul_pow]
           _ = B^2 := by rw [haR]
+          _ ≤ B^2 := le_rfl
       · calc
           (∑ i ∈ s, (a*d i)*c i) = a * (∑ i ∈ s, d i*c i) := by
             rw [Finset.mul_sum]
