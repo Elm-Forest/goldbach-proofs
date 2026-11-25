@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: open-goat/pequalnp-proofs
-          ref: f1f88ce0acb765d2c43ed7bcca8b05e248234f0a
+          ref: ff46a7aab728bdda58d5b0332234db6b00b6d245
           path: upstream
           persist-credentials: false
       - name: Copy candidate

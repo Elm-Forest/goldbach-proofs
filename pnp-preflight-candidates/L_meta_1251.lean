@@ -17,6 +17,6 @@ theorem PEqualNP.Outside.L_meta_1251 : ∃ C : PEqualNP.CircuitLowerBounds.Circu
     ⟨PEqualNP.CircuitLowerBounds.GateOp.or, [16, 15]⟩
   ], 17⟩
   refine ⟨C, ?_, ?_, ?_⟩
-  · decide
+  · simp [PEqualNP.MetaComplexity.Monotone2, C]
   · decide
   · decide
