@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [L_gct_126]
+        module: [L_lib_124]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: open-goat/pequalnp-proofs
-          ref: 6854e46e749b2c73b536745b8019c596038aad6c
+          ref: 83e146b2f7a0708d0a287c8471d77aacb005141f
           path: upstream
           persist-credentials: false
       - name: Copy candidate
