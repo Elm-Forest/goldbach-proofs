@@ -22,13 +22,13 @@ jobs:
           export PATH="$HOME/.elan/bin:$PATH"
           elan toolchain install "$(cat lean-toolchain)"
           lake exe cache get
-      - name: Compile reflection-grid thinning proof
+      - name: Compile batch of candidate proofs
         working-directory: lean
         run: |
           set -u
           export PATH="$HOME/.elan/bin:$PATH"
           fail=0
-          for proof in ../preflight-proofs/L_goldbach_reflection_grid_thinning.lean; do
+          for proof in ../batch-10-proofs/L_*.lean; do
             echo "::group::$(basename "$proof")"
             if timeout 240 lake env lean "$proof"; then
               echo "PREFLIGHT PASS: $(basename "$proof")"
