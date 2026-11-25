@@ -11,10 +11,11 @@ theorem PEqualNP.Outside.L_lib_124 :
     | succ n ih =>
       calc
         (p' + (n + 1)) * p' ^ (n + 1) =
-            ((p' + n) * p' ^ n) * (p' + 1) - n * p' ^ n := by
-          rw [pow_succ, Nat.eq_sub_of_add_eq]
-          ring
-        _ ≤ ((p' + n) * p' ^ n) * (p' + 1) := Nat.sub_le _ _
+            ((p' + n + 1) * p') * p' ^ n := by rw [pow_succ]; ring
+        _ ≤ ((p' + n) * (p' + 1)) * p' ^ n := by
+          apply Nat.mul_le_mul_right
+          nlinarith
+        _ = ((p' + n) * p' ^ n) * (p' + 1) := by ring
         _ ≤ (p' * q ^ n) * q := Nat.mul_le_mul ih hstep
         _ = p' * q ^ (n + 1) := by rw [pow_succ, mul_assoc]
   by_cases hp : p' = 0
