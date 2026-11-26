@@ -56,7 +56,10 @@ theorem PEqualNP.Outside.L_goldbach_finite_phase_early_prefix_cost :
     have hT0 : (0:ℝ) ≤ (T:ℝ) := by positivity
     constructor
     · linarith only [hsum0, hdiv, hT0]
-    · linarith only [hsum, hdiv0, hT0]
+    · calc
+        _ ≤ ∑ k ∈ s, ArithmeticFunction.vonMangoldt k := sub_le_self _ hdiv0
+        _ ≤ 50*(T:ℝ) := hsum
+        _ ≤ 51*(T:ℝ) := mul_le_mul_of_nonneg_right (by norm_num) hT0
   have hS : (∑ m ∈ Finset.Ico 0 T, |D m|) ≤ 51*(T:ℝ)^2 := by
     calc
       _ ≤ ∑ m ∈ Finset.Ico 0 T, 51*(T:ℝ) := Finset.sum_le_sum hD
