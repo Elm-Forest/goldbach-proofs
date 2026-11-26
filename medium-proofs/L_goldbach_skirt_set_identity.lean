@@ -36,4 +36,17 @@ theorem indicator_integral_eq
     (∫ t in (0 : ℝ)..1, (wide \ (mid ∪ low)).indicator f t) := by
   rw [set_diff_diff_eq_diff_union wide mid low narrow h]
 
+
+/-- Pointwise residual-energy inequality for the Goldbach prime-square
+    integrand relative to a rational-arc model. -/
+theorem square_difference_bound (s m : ℂ) :
+    ‖s ^ 2 - m ^ 2‖ ≤ ‖s - m‖ ^ 2 + 2 * ‖s - m‖ * ‖m‖ := by
+  have h : s ^ 2 - m ^ 2 = (s - m) ^ 2 + (2 : ℂ) * (s - m) * m := by ring
+  rw [h]
+  calc
+    _ ≤ ‖(s - m) ^ 2‖ + ‖(2 : ℂ) * (s - m) * m‖ := norm_add_le _ _
+    _ = _ := by
+      simp only [norm_pow, norm_mul, norm_ofNat]
+      ring
+
 end GoldbachMediumSkirt
