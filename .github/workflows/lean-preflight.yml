@@ -28,7 +28,7 @@ jobs:
           set -u
           export PATH="$HOME/.elan/bin:$PATH"
           fail=0
-          for proof in ../rectangular-proofs/L_goldbach_rectangular_divisor_budget.lean ../rectangular-proofs/L_goldbach_rectangular_corner_budget.lean; do
+          for proof in ../evening-proofs/L_*.lean; do
             echo "::group::$(basename "$proof")"
             if timeout 240 lake env lean "$proof"; then
               echo "PREFLIGHT PASS: $(basename "$proof")"
