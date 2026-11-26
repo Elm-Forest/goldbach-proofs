@@ -46,7 +46,8 @@ theorem square_difference_bound (s m : ℂ) :
   calc
     _ ≤ ‖(s - m) ^ 2‖ + ‖(2 : ℂ) * (s - m) * m‖ := norm_add_le _ _
     _ = _ := by
-      simp only [norm_pow, norm_mul, norm_ofNat]
+      have htwo : ‖(2 : ℂ)‖ = (2 : ℝ) := by norm_num
+      simp only [norm_pow, norm_mul, htwo]
       ring
 
 end GoldbachMediumSkirt
