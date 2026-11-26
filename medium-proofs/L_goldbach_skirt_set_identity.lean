@@ -48,6 +48,5 @@ theorem square_difference_bound (s m : ℂ) :
     _ = _ := by
       have htwo : ‖(2 : ℂ)‖ = (2 : ℝ) := by norm_num
       simp only [norm_pow, norm_mul, htwo]
-      ring
 
 end GoldbachMediumSkirt
