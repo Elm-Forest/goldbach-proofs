@@ -13,21 +13,20 @@ theorem set_diff_diff_eq_diff_union
     (wide mid low narrow : Set ℝ) (h : narrow ⊆ mid) :
     ((wide \ mid) \ (low \ narrow)) = (wide \ (mid ∪ low)) := by
   ext t
+  simp only [Set.mem_sdiff, Set.mem_union]
   constructor
-  · intro ht
-    obtain ⟨⟨hw, hnotmid⟩, hnotlow_narrow⟩ := Set.mem_diff.mp ht
-    have hnotlow : t ∉ low := by
-      intro hlow
-      apply hnotlow_narrow
-      exact Set.mem_diff.mpr ⟨hlow, fun hn => hnotmid (h hn)⟩
-    exact Set.mem_diff.mpr ⟨hw, fun hh => hh.elim hnotmid hnotlow⟩
-  · intro ht
-    obtain ⟨hw, hnotunion⟩ := Set.mem_diff.mp ht
-    have hnotmid : t ∉ mid := fun hm => hnotunion (Or.inl hm)
-    have hnotlow : t ∉ low := fun hl => hnotunion (Or.inr hl)
-    exact Set.mem_diff.mpr
-      ⟨Set.mem_diff.mpr ⟨hw, hnotmid⟩,
-       fun hh => hnotlow (Set.mem_diff.mp hh).1⟩
+  · rintro ⟨⟨hw, hnotmid⟩, hnotlow_narrow⟩
+    refine ⟨hw, ?_⟩
+    intro hh
+    rcases hh with hm | hl
+    · exact hnotmid hm
+    · exact hnotlow_narrow ⟨hl, fun hn => hnotmid (h hn)⟩
+  · rintro ⟨hw, hnotunion⟩
+    refine ⟨⟨hw, ?_⟩, ?_⟩
+    · intro hm
+      exact hnotunion (Or.inl hm)
+    · intro hl
+      exact hnotunion (Or.inr hl.1)
 
 theorem indicator_integral_eq
     (wide mid low narrow : Set ℝ) (h : narrow ⊆ mid)
