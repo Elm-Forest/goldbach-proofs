@@ -53,7 +53,10 @@ theorem PEqualNP.Outside.L_goldbach_finite_phase_early_prefix_cost :
         _ ≤ _ := mul_le_mul_of_nonneg_left htot (by positivity)
     change |(∑ k ∈ s, ArithmeticFunction.vonMangoldt k)-(m:ℝ)/Nat.totient q| ≤ _
     rw [abs_le]
-    constructor <;> linarith
+    have hT0 : (0:ℝ) ≤ (T:ℝ) := by positivity
+    constructor
+    · linarith only [hsum0, hdiv, hT0]
+    · linarith only [hsum, hdiv0, hT0]
   have hS : (∑ m ∈ Finset.Ico 0 T, |D m|) ≤ 51*(T:ℝ)^2 := by
     calc
       _ ≤ ∑ m ∈ Finset.Ico 0 T, 51*(T:ℝ) := Finset.sum_le_sum hD
