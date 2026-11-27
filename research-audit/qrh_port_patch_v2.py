@@ -60,3 +60,51 @@ edit('PrimeNumberTheoremAnd/Wiener.lean',[
   'inter_mem_nhdsWithin _ (Iio_mem_nhds (show 0 < δ / 2 from div_pos hδ (by norm_num)))')
 ])
 heartbeat('PrimeNumberTheoremAnd/Wiener.lean')
+
+# Round 4: local interface change and avoid elaborating huge expressions
+# during ring/simp in the uniform Fourier coefficient moment.
+edit('RellichKondrachov/Analysis/FunctionalSpaces/Sobolev/Euclidean/L2Compactness/Smoothing.lean',[
+ ('(s := K) (f := fun x : E => u x) hKm).2 hu',
+  '(s := K) (f := fun x : E => u x) hKm.nullMeasurableSet).2 hu')
+])
+p=root/'OAI/NumberTheory/DirichletL/Mellin/LogProfiles.lean'
+s=p.read_text()
+i=s.index('theorem uniform_fourier_coefficient_moment')
+j=s.index(' := by\n',i)+len(' := by\n')
+k=s.index('\nnoncomputable def profileDerivativeConstant',j)
+helper="""private theorem scaled_moment_combine {S V z x y a b : ℝ}
+    (hS : 0 ≤ S) (hV : 0 ≤ V) (hz : z ≤ V*(x+y))
+    (ha : S*x ≤ a) (hb : S*y ≤ b) :
+    S*z ≤ V*(a+b) := by
+  calc
+    _ ≤ S*(V*(x+y)) := mul_le_mul_of_nonneg_left hz hS
+    _ = V*(S*x+S*y) := by ring
+    _ ≤ _ := mul_le_mul_of_nonneg_left (add_le_add ha hb) hV
+
+"""
+proof="""  let p : ℕ := (volume : Measure ℝ).integrablePower
+  let V : ℝ := 2 ^ p * ∫ t : ℝ, (1 + ‖t‖) ^ (-(p : ℝ))
+  let K : ℕ := J+p
+  let x : ℝ := (SchwartzMap.seminorm ℝ 0 0) (𝓕 g)
+  let y : ℝ := (SchwartzMap.seminorm ℝ K 0) (𝓕 g)
+  let a : ℝ := (2:ℝ)^0*((0:ℝ)+1)*V*C
+  let b : ℝ := (2:ℝ)^K*((K:ℝ)+1)*V*C
+  have hV : 0 ≤ V := by
+    dsimp only [V]
+    exact mul_nonneg (by positivity) (integral_nonneg fun _ => Real.rpow_nonneg (by positivity) _)
+  have h0 : ∀ i ≤ (0:ℕ), S*((SchwartzMap.seminorm ℝ 0 i) g+
+      (SchwartzMap.seminorm ℝ p i) g) ≤ C := by
+    intro i hi
+    exact hsource i (hi.trans (Nat.zero_le _))
+  have hK : ∀ i ≤ K, S*((SchwartzMap.seminorm ℝ 0 i) g+
+      (SchwartzMap.seminorm ℝ p i) g) ≤ C := hsource
+  have ha : S*x ≤ a := uniform_fourier_seminorm_transfer g 0 S C hS hC h0
+  have hb : S*y ≤ b := uniform_fourier_seminorm_transfer g K S C hS hC hK
+  have hm : (∫ t : ℝ, ‖t‖ ^ J * ‖(𝓕 g) t‖) ≤ V*(x+y) :=
+    fourier_coefficient_moment g J
+  change S*(∫ t : ℝ, ‖t‖ ^ J * ‖(𝓕 g) t‖) ≤ V*(a+b)
+  exact scaled_moment_combine hS hV hm ha hb
+"""
+# Only replace the proof body; the original theorem statement remains byte-for-byte.
+s=s[:i]+helper+s[i:j]+proof+s[k:]
+p.write_text(s)
