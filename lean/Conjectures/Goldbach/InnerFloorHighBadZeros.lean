@@ -82,12 +82,12 @@ theorem highZeroFamilyEnergyReserve
         ‖∑ i∈S χ, Ve y h ((V1 χ).zeros i)‖^2) ≤
       ε^2*h^2*X := by
   apply (highZeroFamilyEnergy F S hX hh hhX hT hM hcard hheight).trans
-  have h : 6*X/T*M≤ε*h := by
+  have hsmall : 6*X/T*M≤ε*h := by
     rw [div_mul_eq_mul_div]
     exact (div_le_iff₀ hT).2 hreserve
   calc
     _ ≤ X*(ε*h)^2 := mul_le_mul_of_nonneg_left
-      (pow_le_pow_left₀ (by positivity) h 2) (by linarith)
+      (pow_le_pow_left₀ (by positivity) hsmall 2) (by linarith)
     _ = _ := by ring
 
 end

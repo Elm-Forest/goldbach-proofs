@@ -223,8 +223,9 @@ theorem smoothedWindowEnergy
       have hpos : y+h ≠ 0 := by linarith [hy.1]
       have hc : ContinuousAt (fun t : ℝ => t+h) y :=
         (continuous_id.add continuous_const).continuousAt
-      have hcomp := (Complex.continuousAt_ofReal_cpow_const (y+h) ((V1 χ).zeros i)
-        (Or.inr hpos)).comp hc
+      have hcomp : ContinuousAt (fun t : ℝ => ((t+h:ℝ):ℂ)^((V1 χ).zeros i)) y :=
+        ContinuousAt.comp (f := fun t : ℝ => t+h) (x := y)
+          (Complex.continuousAt_ofReal_cpow_const (y+h) ((V1 χ).zeros i) (Or.inr hpos)) hc
       exact hcomp.continuousWithinAt
     · intro y hy
       exact (Complex.continuousAt_ofReal_cpow_const y ((V1 χ).zeros i)

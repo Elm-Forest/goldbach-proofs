@@ -47,7 +47,7 @@ theorem windowFormulaEnergy (g f : ℝ → ℂ) {X δ E : ℝ}
     refine hsq.trans (hs'.trans ?_)
     calc
       _ ≤ 2*E^2+2*((1/δ)*(∫ u in y-δ..y, ‖f u‖^2)) :=
-        add_le_add_left (mul_le_mul_of_nonneg_left hn (by norm_num : (0:ℝ)≤2)) _
+        add_le_add_right (mul_le_mul_of_nonneg_left hn (by norm_num : (0:ℝ)≤2)) _
       _ = _ := by ring
   have hi : (∫ y in X..2*X, ‖g y‖^2) ≤
       ∫ y in X..2*X, 2*E^2 + (2/δ)*(∫ u in y-δ..y, ‖f u‖^2) := by
@@ -62,7 +62,7 @@ theorem windowFormulaEnergy (g f : ℝ → ℂ) {X δ E : ℝ}
   calc
     _ ≤ (2*X-X)*(2*E^2)+(2/δ)*(∫ y in X..2*X,∫ u in y-δ..y,‖f u‖^2) := hi
     _ ≤ (2*X-X)*(2*E^2)+(2/δ)*(δ*(∫ u in X-δ..2*X,‖f u‖^2)) :=
-      add_le_add_left (mul_le_mul_of_nonneg_left hFubini (by positivity : 0≤(2:ℝ)/δ)) _
+      add_le_add_right (mul_le_mul_of_nonneg_left hFubini (by positivity : 0≤(2:ℝ)/δ)) _
     _ = _ := by field_simp; ring
 
 /-- The actual nonprincipal von Mangoldt short-window family is bounded by
@@ -104,11 +104,12 @@ theorem primitiveWindowEnergyFromZeros :
     apply ContinuousOn.mul _ continuousOn_const
     apply ContinuousOn.sub
     · intro y hy
-      have hp : y+(h:ℝ) ≠ 0 := by linarith [hy.1,Nat.cast_nonneg h]
+      have hp : y+(h:ℝ) ≠ 0 := by linarith [hy.1, Nat.cast_nonneg (α := ℝ) h]
       have hc : ContinuousAt (fun t:ℝ => t+(h:ℝ)) y :=
         (continuous_id.add continuous_const).continuousAt
-      have hcomp := (Complex.continuousAt_ofReal_cpow_const (y+(h:ℝ))
-        ((V1 χ).zeros i) (Or.inr hp)).comp hc
+      have hcomp : ContinuousAt (fun t : ℝ => ((t+(h:ℝ):ℝ):ℂ)^((V1 χ).zeros i)) y :=
+        ContinuousAt.comp (f := fun t : ℝ => t+(h:ℝ)) (x := y)
+          (Complex.continuousAt_ofReal_cpow_const (y+(h:ℝ)) ((V1 χ).zeros i) (Or.inr hp)) hc
       exact hcomp.continuousWithinAt
     · intro y hy
       exact (Complex.continuousAt_ofReal_cpow_const y ((V1 χ).zeros i)
@@ -127,6 +128,8 @@ theorem primitiveWindowEnergyFromZeros :
     _ = (F.card:ℝ)*(2*X*E^2)+2*(∑ χ∈F,∫ y in X-δ..2*X,‖f χ y‖^2) := by
       rw [sum_add_distrib,← mul_sum]
       simp only [sum_const,nsmul_eq_mul]
+      rw [← mul_sum]
+      ring
     _ ≤ _ := by
       have hm := mul_le_mul_of_nonneg_right hcard (by positivity : 0≤2*X*E^2)
       linarith
