@@ -32,7 +32,7 @@ theorem blockScalarBudget {n X A h E K D C P L l₁ l₂ : ℝ}
     rw [pow_two,← Real.rpow_add hnP]
     congr 1 <;> ring
   have haux : n^(-(1/5):ℝ)*L^10 ≤ 1 := by
-    have H := mul_le_mul_of_nonneg_left hsmall (Real.rpow_nonneg hnP.le _)
+    have H := mul_le_mul_of_nonneg_left hsmall (Real.rpow_nonneg hnP.le (-(1/5):ℝ))
     rw [← Real.rpow_add hnP,show -(1/5:ℝ)+1/5=0 by ring,Real.rpow_zero] at H
     exact H
   have herror : (A*E)^2 ≤ (8*D+16)^2*h^2/L^8 := by

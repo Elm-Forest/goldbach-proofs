@@ -85,7 +85,7 @@ theorem centeredIntervalEnergy_le (a : ℤ → ℂ) (M : ℤ) (N q : ℕ)
         _ ≤ 2*(∑ u : (ZMod q)ˣ, ‖intervalAdditiveResidueSum a M N q u‖^2)+
             2*(N:ℝ)^2*(1/(q.totient:ℝ)) := add_le_add le_rfl h
         _ = _ := by
-          simp only [div_eq_mul_inv,one_div]
+          simp only [div_eq_mul_inv,one_mul]
           congr 1
           congr 1
           apply sum_congr
@@ -93,6 +93,7 @@ theorem centeredIntervalEnergy_le (a : ℤ → ℂ) (M : ℤ) (N q : ℕ)
             simp
           · intro u _
             rfl
+          all_goals simp only [one_mul]
 
 /-- For any interval of N terms, the total centered reduced numerator
 energy has at most a quadratic logarithmic model cost. -/

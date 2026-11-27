@@ -22,8 +22,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: lean/.lake/build
-          key: inner-community-linux-x64-1fe24b28-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-${{ github.run_id }}
+          key: inner-research-linux-x64-20261128-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-${{ github.run_id }}
           restore-keys: |
+            inner-research-linux-x64-20261128-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-
             inner-community-linux-x64-1fe24b28-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-
       - name: Read official verified import registry
         continue-on-error: true
@@ -50,12 +51,6 @@ jobs:
           export PATH="$HOME/.elan/bin:$PATH"
           time lake build Conjectures.Goldbach.DyadicCellShortPrimeFloor Conjectures.Goldbach.ShortProgressionsMeanTheta Conjectures.Goldbach.ReflectionCharacterContraction PEqualNP.Outside.L_goldbach_frontier_type2_b1_b4
           du -sh .lake/build
-      - name: Persist successful dependencies before testing candidates
-        if: steps.deps.outcome == 'success' && steps.community.outputs.cache-matched-key == ''
-        uses: actions/cache/save@v4
-        with:
-          path: lean/.lake/build
-          key: ${{ steps.community.outputs.cache-primary-key }}
       - name: Test current Lean candidates
         working-directory: lean
         run: |
@@ -64,3 +59,10 @@ jobs:
           time lake env lean Conjectures/Goldbach/InnerFloorDensityBudget.lean
           time lake build Conjectures.Goldbach.InnerFloorGoodZeroAssembly Conjectures.Goldbach.InnerFloorNearOneSparsity Conjectures.Goldbach.InnerFloorHighBadZeros Conjectures.Goldbach.InnerFloorWindowFormulaEnergy Conjectures.Goldbach.InnerFloorSignedSparsePacket Conjectures.Goldbach.InnerFloorConductorLift Conjectures.Goldbach.InnerFloorPhysicalL2 Conjectures.Goldbach.InnerFloorPrimeWeightTransfer Conjectures.Goldbach.InnerFloorReducedGallagher Conjectures.Goldbach.InnerFloorCanonicalResidual Conjectures.Goldbach.InnerFloorQuadraticPacket Conjectures.Goldbach.InnerFloorModelTransfer Conjectures.Goldbach.InnerFloorProductConductor Conjectures.Goldbach.InnerFloorFullSpectrum Conjectures.Goldbach.InnerFloorProductFamily Conjectures.Goldbach.InnerFloorReducedModelTransfer Conjectures.Goldbach.InnerFloorFrozenAssembly Conjectures.Goldbach.InnerFloorUniformStripBridge Conjectures.Goldbach.InnerFloorPrincipalWindow Conjectures.Goldbach.InnerFloorBoundaryEnergy Conjectures.Goldbach.InnerFloorPrincipalPrimeWindow Conjectures.Goldbach.InnerFloorDiscreteWindowEnergy Conjectures.Goldbach.InnerFloorPrimitiveFamilyBridge Conjectures.Goldbach.InnerFloorPrimeSpectralTransfer Conjectures.Goldbach.InnerFloorLowBadResidual Conjectures.Goldbach.InnerFloorGcdPacket Conjectures.Goldbach.InnerFloorLogGapObstruction Conjectures.Goldbach.InnerFloorClippedMoving Conjectures.Goldbach.InnerFloorDyadicBandAssembly Conjectures.Goldbach.InnerFloorFixedPowerBands Conjectures.Goldbach.InnerFloorActualFamilyBlock Conjectures.Goldbach.InnerFloorFixedBandBoundary Conjectures.Goldbach.InnerFloorFixedBandBoundaryAsymptotic Conjectures.Goldbach.InnerFloorBlockSummation Conjectures.Goldbach.InnerFloorFixedBandAnalyticParameters Conjectures.Goldbach.InnerFloorUniformStripArithmetic Conjectures.Goldbach.InnerFloorFixedBlockScale Conjectures.Goldbach.InnerFloorGlobalSmoothingBudget Conjectures.Goldbach.InnerFloorBlockScalarBudget Conjectures.Goldbach.InnerFloorUniformBlockLogEight Conjectures.Goldbach.InnerFloorConditionalEndToEnd
           echo "PREFLIGHT PASS"
+      - name: Save incremental research objects (not an authoritative verdict)
+        if: always() && steps.deps.outcome == 'success'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: lean/.lake/build
+          key: ${{ steps.community.outputs.cache-primary-key }}

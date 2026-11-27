@@ -50,7 +50,6 @@ theorem eventualFixedBlockScale :
   obtain ⟨hA,hAp,hcp⟩ := he j hj
   obtain ⟨hhlo,hhhi,hwidth⟩ := hw j hj
   obtain ⟨ha,ha',hc,hdens,hUexp,hδexp,hneg,hcub,hpp⟩ := fixedBandGlobalExponents j hj
-  dsimp only at ha ha' hc hdens hUexp hδexp hneg hcub hpp
   have hnR : (1:ℝ) ≤ n := by exact_mod_cast (show 1 ≤ n by omega)
   have hnP : (0:ℝ) < n := by linarith
   have hA0 : (0:ℝ) < A := by exact_mod_cast (show 0 < fixedBandEnd n (j+1) by omega)
