@@ -1,0 +1,43 @@
+name: Lean Internal Research Proof Audit
+on:
+  push:
+    branches:
+      - 'cloud-preflight/inner-floor-candidate-20261127'
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Lean and prebuilt Mathlib
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          curl --retry 4 -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --no-modify-path --default-toolchain none
+          export PATH="$HOME/.elan/bin:$PATH"
+          elan toolchain install "$(cat lean-toolchain)"
+          lake exe cache get
+      - name: Build verified community dependencies
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          timeout 7200 lake build PEqualNP.Outside.L_goldbach_frontier_medcore_bv_band Conjectures.Goldbach.ShortProgressionsMeanTheta Conjectures.Goldbach.LowSkirtFromShortProgressions
+      - name: Compile all research lemmas separately
+        working-directory: lean
+        run: |
+          export PATH="$HOME/.elan/bin:$PATH"
+          fail=0
+          for name in ShortAPBridge InnerFloorGeometry InnerFloorWindowScale InnerFloorWeightedVariance InnerFloorModelTransfer InnerFloorHighBand WideRemainderInnerFloorCandidate; do
+            echo "::group::$name"
+            if timeout 1200 lake env lean -o ".lake/build/lib/lean/$name.olean" "$name.lean"; then
+              echo "PREFLIGHT PASS: $name"
+              echo "- PASS: $name" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "PREFLIGHT FAIL: $name"
+              echo "- FAIL: $name" >> "$GITHUB_STEP_SUMMARY"
+              fail=1
+            fi
+            echo "::endgroup::"
+          done
+          exit "$fail"
