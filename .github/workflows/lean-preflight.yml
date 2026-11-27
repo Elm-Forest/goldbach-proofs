@@ -27,5 +27,5 @@ jobs:
         run: |
           set -euo pipefail
           export PATH="$HOME/.elan/bin:$PATH"
-          lake build Conjectures.Goldbach.InnerFloorReducedGaussEnergy
-          echo "PREFLIGHT PASS: InnerFloorReducedGaussEnergy.lean"
+          lake build Conjectures.Goldbach.InnerFloorReducedGaussEnergy Conjectures.Goldbach.InnerFloorConductorLift Conjectures.Goldbach.InnerFloorPhysicalL2
+          echo "PREFLIGHT PASS: reduced Gauss energy, conductor lift, and regular-box physical L2"

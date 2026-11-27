@@ -37,14 +37,19 @@ theorem reducedSynthesis (b : (ZMod q)ˣ → ℂ) (a : (ZMod q)ˣ) :
         (∑ χ : DirichletCharacter ℂ q,
           (χ (r : ZMod q) * gaussSum χ⁻¹ ZMod.stdAddChar) *
             χ (a : ZMod q)) / (q.totient : ℂ) := by
+    have hFintype :
+        DyadicMixedB4RamanujanCharacters.unitFintype q =
+          (inferInstance : Fintype (ZMod q)ˣ) := Subsingleton.elim _ _
     have h := unit_character_expansion
       (fun x : (ZMod q)ˣ => ZMod.stdAddChar ((x : ZMod q) * (r : ZMod q))) a
+    rw [hFintype] at h
     have ht (χ : DirichletCharacter ℂ q) :
         (∑ x : (ZMod q)ˣ, star (χ (x : ZMod q)) *
           ZMod.stdAddChar ((x : ZMod q) * (r : ZMod q))) =
           χ (r : ZMod q) * gaussSum χ⁻¹ ZMod.stdAddChar := by
-      simpa only [Units.val_one, one_mul, map_one] using
-        unit_twisted_gauss χ (1 : (ZMod q)ˣ) r
+      have h' := unit_twisted_gauss χ (1 : (ZMod q)ˣ) r
+      rw [hFintype] at h'
+      simpa only [Units.val_one, one_mul, map_one] using h' 
     simpa only [ht] using h
   unfold unitAdditiveError
   simp_rw [hExp, Finset.sum_div, Finset.mul_sum]
