@@ -73,9 +73,10 @@ theorem fixedBandWindow_bounds (n j : ℕ) (hn : 1 ≤ n) (hj : j < 10) :
   have hf : (fixedBandWindow n j:ℝ) ≤ (n:ℝ)^fixedBandWindowExp j :=
     Nat.floor_le (Real.rpow_nonneg (Nat.cast_nonneg _) _)
   have hh := hf.trans (Real.rpow_le_rpow_of_exponent_le hn' hc)
-  exact ⟨by exact_mod_cast (hh.trans
-    (by simpa only [Real.rpow_one] using
-      (Real.rpow_le_rpow_of_exponent_le hn' (show (99/100:ℝ) ≤ 1 by norm_num)))),hh⟩
+  have hn'': (fixedBandWindow n j:ℝ) ≤ (n:ℝ) := hh.trans (by
+    simpa only [Real.rpow_one] using
+      (Real.rpow_le_rpow_of_exponent_le hn' (show (99/100:ℝ) ≤ 1 by norm_num)))
+  exact ⟨Nat.cast_le.mp hn'',hh⟩
 
 /-- The ten widths all satisfy the exact Gallagher frequency condition
 and the uniform lower bound needed for the principal prime window.
@@ -98,7 +99,8 @@ theorem eventualFixedBandWindows : ∀ᶠ n : ℕ in atTop,
     unfold fixedBandWindowExp fixedBandLowerExp
     apply le_min <;> linarith [Nat.cast_nonneg (α:=ℝ) j]
   have hres : fixedBandWindowExp j+1/100 ≤ 5/6+fixedBandLowerExp j := by
-    linarith [min_le_left (5/6+fixedBandLowerExp j-1/100) (99/100:ℝ)]
+    unfold fixedBandWindowExp
+    linarith only [min_le_left (5/6+fixedBandLowerExp j-1/100) (99/100:ℝ)]
   have hf := Nat.lt_floor_add_one ((n:ℝ)^fixedBandWindowExp j)
   change (n:ℝ)^fixedBandWindowExp j < (fixedBandWindow n j:ℝ)+1 at hf
   have hlower : 2*(n:ℝ)^(4/5:ℝ) ≤ (n:ℝ)^fixedBandWindowExp j := by
