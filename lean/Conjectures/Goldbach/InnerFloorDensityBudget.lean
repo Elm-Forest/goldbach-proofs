@@ -79,4 +79,13 @@ theorem smoothingBudget {a b c : ℝ}
   rcases hc with hc | hc <;>
     exact ⟨by linarith, by linarith, by linarith, by linarith⟩
 
+/-- The prime-power correction, normalized by h and multiplied by the
+square root of the primitive family cardinality, costs Q sqrt(X)/h
+times logarithms. It has uniform power slack in the current scale. -/
+theorem primePowerFamilyExponent {a b c : ℝ}
+    (ha' : a ≤ 1/5) (hb' : b ≤ 1)
+    (hc : 5/6 - 1/1000 + a ≤ c ∨ 99/100 ≤ c) :
+    a+b/2-c ≤ -(1/4) := by
+  rcases hc with hc | hc <;> linarith
+
 end InnerFloorResearch.DensityBudget
