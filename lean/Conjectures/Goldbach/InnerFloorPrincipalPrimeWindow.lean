@@ -32,7 +32,8 @@ theorem principalPrimePowerWindowError (χ : DirichletCharacter ℂ 1)
     simp
   unfold V42 InnerFloorAP.centeredPrimeSum
   rw [if_pos rfl,← windowIndices_eq y h hy]
-  simp only [hval,mul_one,V1n,sub_sub_sub_cancel_right]
+  simp only [hval,mul_one,V1n]
+  rw [show ((h:ℝ):ℂ)=(h:ℂ) by norm_cast, sub_sub_sub_cancel_right]
   simpa only [s,mul_one,logPrimeWeight] using he
 
 theorem principalPrimeWindowLogFour :

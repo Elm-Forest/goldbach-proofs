@@ -43,7 +43,7 @@ theorem sum_unitModelEnergy (q : ℕ) [NeZero q] :
     _ ≤ ∑ _u : (ZMod q)ˣ, (1/(q.totient:ℝ))^2 :=
       sum_le_sum fun u _ => pow_le_pow_left₀ (norm_nonneg _) (hterm u) 2
     _ = _ := by
-      rw [sum_const,nsmul_eq_mul,ZMod.card_units_eq_totient]
+      rw [sum_const,nsmul_eq_mul,card_univ,ZMod.card_units_eq_totient]
       field_simp
 
 def centeredIntervalEnergy (a : ℤ → ℂ) (M : ℤ) (N q : ℕ) : ℝ :=
@@ -68,8 +68,10 @@ theorem centeredIntervalEnergy_le (a : ℤ → ℂ) (M : ℤ) (N q : ℕ)
       ((N:ℂ)*additiveModel q (u:ZMod q))
     rw [norm_mul,Complex.norm_natCast] at hs
     exact (pow_le_pow_left₀ (norm_nonneg _) hs 2).trans
-      (by nlinarith only [sq_nonneg
-        (‖intervalAdditiveResidueSum a M N q u‖-(N:ℝ)*‖additiveModel q (u:ZMod q)‖)])
+      (by
+        have H := sq_nonneg (‖intervalAdditiveResidueSum a M N q u‖ -
+          (N:ℝ)*‖additiveModel q (u:ZMod q)‖)
+        nlinarith only [H])
   calc
     _ ≤ ∑ u : (ZMod q)ˣ, (2*‖intervalAdditiveResidueSum a M N q u‖^2+
         2*(N:ℝ)^2*‖additiveModel q (u:ZMod q)‖^2) := sum_le_sum fun u _ => hterm u
@@ -78,7 +80,7 @@ theorem centeredIntervalEnergy_le (a : ℤ → ℂ) (M : ℤ) (N q : ℕ)
       rw [sum_add_distrib,← mul_sum,← mul_sum]
     _ ≤ _ := by
       rw [← mul_div_assoc]
-      exact add_le_add_left (mul_le_mul_of_nonneg_left (sum_unitModelEnergy q) (by positivity)) _
+      exact add_le_add_right (mul_le_mul_of_nonneg_left (sum_unitModelEnergy q) (by positivity)) _
 
 /-- For any interval of N terms, the total centered reduced numerator
 energy has at most a quadratic logarithmic model cost. -/
@@ -95,8 +97,9 @@ theorem centeredIntervalFamilyEnergy (A N : ℕ) (M : ℤ)
       sum_le_sum fun q hq => centeredIntervalEnergy_le a M N q (mem_Icc.mp hq).1
     _ = 2*(∑ q∈Icc 1 A,modulusAdditiveEnergy a M N q)+
       2*(N:ℝ)^2*(∑ q∈Icc 1 A,1/(q.totient:ℝ)) := by
-      rw [sum_add_distrib,← mul_sum,mul_sum]
+      rw [sum_add_distrib,← mul_sum]
       congr 1
+      rw [mul_sum]
       apply sum_congr rfl
       intro q _
       ring
