@@ -64,6 +64,82 @@ jobs:
           #print axioms qrhShort_exactUniformStrip
           LEAN
           du -sh .
+      - name: Apply two-root compatibility patch
+        run: |
+          set -euxo pipefail
+          cd /tmp/short-qrh
+          git init -q
+          git add .
+          git -c user.name=Research -c user.email=research@example.invalid commit -qm pinned-source
+          python - /tmp/short-qrh <<'PY'
+          """Port only the two actual short-route root failures; preserve theorem statements."""
+          from pathlib import Path
+          import sys
+          root=Path(sys.argv[1])
+          def edit(name, changes):
+              p=root/name; s=p.read_text()
+              for old,new in changes:
+                  assert old in s,(name,old)
+                  print(name,'replacement count',s.count(old))
+                  s=s.replace(old,new)
+              p.write_text(s)
+          edit('RellichKondrachov/MeasureTheory/Function/LpSpace/Restrict.lean',[
+           ('(f := fun x : α => f x) hs).2 hf','(f := fun x : α => f x) hs.nullMeasurableSet).2 hf'),
+           ('(f := fun x : α => f x) hs).2 (Lp.memLp f)',
+            '(f := fun x : α => f x) hs.nullMeasurableSet).2 (Lp.memLp f)'),
+           ('(f := fun x : α => f x) hs)\n    -- Combine',
+            '(f := fun x : α => f x) hs.nullMeasurableSet)\n    -- Combine')
+          ])
+          p=root/'OAI/NumberTheory/DirichletL/Mellin/LogProfiles.lean'
+          s=p.read_text()
+          i=s.index('theorem uniform_fourier_coefficient_moment')
+          j=s.index(' := by\n',i)+len(' := by\n')
+          k=s.index('\nnoncomputable def coefficientMomentBound',j)
+          helper="""private theorem scaled_moment_combine {S V z x y a b : ℝ}
+              (hS : 0 ≤ S) (hV : 0 ≤ V) (hz : z ≤ V*(x+y))
+              (ha : S*x ≤ a) (hb : S*y ≤ b) :
+              S*z ≤ V*(a+b) := by
+            calc
+              _ ≤ S*(V*(x+y)) := mul_le_mul_of_nonneg_left hz hS
+              _ = V*(S*x+S*y) := by ring
+              _ ≤ _ := mul_le_mul_of_nonneg_left (add_le_add ha hb) hV
+          
+          """
+          proof="""  let p : ℕ := (volume : Measure ℝ).integrablePower
+            let V : ℝ := 2 ^ p * ∫ t : ℝ, (1 + ‖t‖) ^ (-(p : ℝ))
+            let K : ℕ := J+p
+            let x : ℝ := (SchwartzMap.seminorm ℝ 0 0) (𝓕 g)
+            let y : ℝ := (SchwartzMap.seminorm ℝ K 0) (𝓕 g)
+            let a : ℝ := (2:ℝ)^0*((0:ℝ)+1)*V*C
+            let b : ℝ := (2:ℝ)^K*((K:ℝ)+1)*V*C
+            have hV : 0 ≤ V := by
+              dsimp only [V]
+              exact mul_nonneg (by positivity) (integral_nonneg fun _ => Real.rpow_nonneg (by positivity) _)
+            have h0 : ∀ i ≤ (0:ℕ), S*((SchwartzMap.seminorm ℝ 0 i) g+
+                (SchwartzMap.seminorm ℝ p i) g) ≤ C := by
+              intro i hi
+              exact hsource i (hi.trans (Nat.zero_le _))
+            have hK : ∀ i ≤ K, S*((SchwartzMap.seminorm ℝ 0 i) g+
+                (SchwartzMap.seminorm ℝ p i) g) ≤ C := hsource
+            have ha : S*x ≤ a := by
+              simpa only [x,a,V,p,Nat.cast_zero,Nat.cast_one] using
+                uniform_fourier_seminorm_transfer g 0 S C hS hC h0
+            have hb : S*y ≤ b := by
+              simpa only [y,b,V,p,K,Nat.cast_add,Nat.cast_one] using
+                uniform_fourier_seminorm_transfer g K S C hS hC hK
+            have hm : (∫ t : ℝ, ‖t‖ ^ J * ‖(𝓕 g) t‖) ≤ V*(x+y) :=
+              fourier_coefficient_moment g J
+            have result := scaled_moment_combine hS hV hm ha hb
+            simpa only [V,a,b,p,K,Nat.cast_add,Nat.cast_one,Nat.cast_zero] using result
+          """
+          
+          # The declaration header is retained; only the tactic proof is changed.
+          s=s[:i]+helper+'set_option maxHeartbeats 20000000 in\n'+s[i:j]+proof+s[k:]
+          p.write_text(s)
+          print("Applied two-root compatibility patch")
+          PY
+          git diff --stat
+          git diff > /tmp/short-qrh/port-short.diff
       - name: Install pinned Lean and Mathlib
         run: |
           set -euxo pipefail
@@ -101,6 +177,7 @@ jobs:
           name: short-qrh-audit
           path: |
             /tmp/short-qrh/short-closure.json
+            /tmp/short-qrh/port-short.diff
             /tmp/short-qrh/build-short.log
             /tmp/short-qrh/axioms-short.log
           if-no-files-found: ignore
