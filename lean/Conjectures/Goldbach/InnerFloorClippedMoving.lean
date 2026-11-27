@@ -30,7 +30,7 @@ theorem clipNatIntSum (n h m : ℕ) {M : Type*} [AddCommMonoid M]
     (f : ℤ → M) :
     (∑ k∈GBSkirtVariance.window n h m, f (k:ℤ)) =
       ∑ k∈Ioc (clipShift h m) (clipShift h m+(clipLength n h m:ℤ)),f k := by
-  apply sum_bij (fun k _ => (k:ℤ))
+  apply sum_bij (fun (k : ℕ) _ => (k : ℤ))
   · intro k hk
     simp only [GBSkirtVariance.window,mem_Icc] at hk
     simp only [mem_Ioc,clipShift,clipLength,clipStart,clipEnd]
@@ -53,7 +53,7 @@ theorem moving_eq_centeredInterval (n h m : ℕ) {q : ℕ} [NeZero q]
         (clipShift h m) (clipLength n h m) q a -
       (clipLength n h m:ℂ)*additiveModel q (a:ZMod q) := by
   rw [GoldbachWindow.moving_eq_sum]
-  have hI : (range (n+1)).filter (fun k => m+1-h≤k ∧ k≤m) =
+  have hI : (range (n+1)).filter (fun k => m+1-h ≤ k ∧ k ≤ m) =
       GBSkirtVariance.window n h m := by
     ext k
     simp only [mem_filter,mem_range,GBSkirtVariance.window,mem_Icc,le_min_iff]
@@ -76,7 +76,8 @@ theorem reducedMoving_eq_centeredIntervalEnergy (n h m q : ℕ) :
         (clipShift h m) (clipLength n h m) q := by
   by_cases hq : q=0
   · simp [reducedMovingLevelEnergy,centeredIntervalEnergy,hq]
-  · simp only [reducedMovingLevelEnergy,centeredIntervalEnergy,dif_neg hq]
+  · letI : NeZero q := ⟨hq⟩
+    simp only [reducedMovingLevelEnergy,centeredIntervalEnergy,dif_neg hq]
     exact sum_congr rfl fun a _ => by rw [moving_eq_centeredInterval n h m a]
 
 theorem clipShiftedCoefficient_le (n h m k : ℕ)
@@ -161,7 +162,7 @@ theorem reducedMovingBulkBoundary (A n h X : ℕ)
         omega
       · intro m hm
         simp only [G,mem_Icc] at hm
-        rw [Nat.sub_add_cancel (by omega : h≤m)]
+        rw [Nat.sub_add_cancel (by omega : h ≤ m)]
     rw [hre]
     apply sum_le_sum
     intro y hy
