@@ -1376,11 +1376,24 @@ class Desk:
                 return None
             return {"kind": row["kind"], "gap": reductions.target(gap, module)}
 
-    def research_gaps(self, conn):
-        gaps = reductions.catalogue(conn, self.gaps)
+    def research_gaps(self, conn, gap_id=None):
+        query = "SELECT gap,certificate FROM assembled_proofs"
+        params = ()
+        if gap_id is None:
+            gaps = reductions.catalogue(conn, self.gaps)
+        else:
+            gap = self.gaps.get(gap_id)
+            if gap is None:
+                row = conn.execute("SELECT descriptor FROM cut_tasks WHERE id=?", (gap_id,)).fetchone()
+                if row is None:
+                    return
+                gap = {**json.loads(row[0]), "parallel": True}
+            gaps = {gap_id: gap}
+            query += " WHERE gap=?"
+            params = (gap_id,)
         refs = reductions.refutations(conn)
-        cuts = reductions.public_records(conn)
-        assemblies = dict(conn.execute("SELECT gap,certificate FROM assembled_proofs"))
+        cuts = reductions.public_records(conn, gap_id)
+        assemblies = dict(conn.execute(query, params))
         inactive = reductions.inactive_tasks(conn)
         for key, gap in gaps.items():
             entries = cuts.get(key, [])

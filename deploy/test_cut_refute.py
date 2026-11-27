@@ -162,6 +162,13 @@ class CutFlow(DeskServerTestCase):
             return {g["id"]: g for g in self.request("/api/status")["gaps"]}
         board = gaps()
         left, right = [c["children"] for c in board[PARENT]["cuts"]]
+        self.assertEqual(self.request(f"/api/task?lemma={PARENT}")["cuts"], board[PARENT]["cuts"])
+        child = left[0]
+        self.assertEqual(self.request(f"/api/task?lemma={child}")["statement"], board[child]["statement"])
+        delta = self.request("/api/status?view=board-index-delta-gzip")
+        child_row = next(row for row in delta["gaps"] if row["id"] == child)
+        self.assertEqual(child_row["plain_statement"], board[child]["plain_statement"])
+        self.assertNotIn("statement", child_row)
         self.assertEqual(left[1], right[1])
         a, b, c = left[0], left[1], right[0]
         self.assertEqual(board[a]["statement"], first["children"][0])

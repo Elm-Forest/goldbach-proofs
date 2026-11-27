@@ -30307,14 +30307,14 @@
   },
   "joshi-abc": {
     "title": {
-      "zh": "Joshi 局部体积修复与 abc 猜想",
-      "en": "Joshi local volumes and the abc conjecture"
+      "zh": "Joshi 3.12与abc猜想",
+      "en": "Joshi 3.12 and the abc conjecture"
     },
     "question": {
-      "zh": "能否从实际 ATS 包络的有限处见证出发，得到适用于有理 Frey 族的 Szpiro 型估计，并将 abc 指数降至任意 1+ε？",
-      "en": "Can finite-place witnesses in the actual ATS hull yield a Szpiro estimate on rational Frey curves and an abc exponent of 1+ε for every ε>0?"
+      "zh": "望月新一未能供应推论3.12的Lean证明。Joshi试图供应一个证明，但按照论文字面量为假。Joshi对abc猜想的证明到底能否被修补，亦或者从一开始就是一场幻梦？",
+      "en": "Shinichi Mochizuki did not provide a Lean proof of Corollary 3.12. Joshi attempted to give a proof, but the statement as written in the paper is false. Can Joshi’s proof of the abc conjecture be repaired, or was it an illusion from the start?"
     },
-    "formula": "∀ ε > 0, ∃ Cε, ∀ coprime a,b > 0, log(a+b) ≤ (1+ε)log rad(ab(a+b)) + Cε",
+    "formula": "c < K_ε rad(abc)^(1+ε)",
     "summary": {
       "zh": "从张量 Haar 归一、29 进见证和迹下降开始，检验同一包络的上下界能否给出统一高度估计。",
       "en": "Start with tensor Haar normalization, 29-adic witnesses and trace descent, and test whether both bounds on one hull can yield a uniform height estimate."

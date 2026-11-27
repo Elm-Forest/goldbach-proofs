@@ -155,12 +155,15 @@ AWARDED_CUTS = """
 """
 
 
-def public_records(conn):
+def public_records(conn, parent_id=None):
     records = {}
-    for run, parent, state, reason, handle, pr, head, child in conn.execute("""
+    where = "WHERE r.parent=?" if parent_id is not None else ""
+    params = (parent_id,) if parent_id is not None else ()
+    for run, parent, state, reason, handle, pr, head, child in conn.execute(f"""
         SELECT r.run,r.parent,r.state,r.reason,l.handle,l.pr,l.head,p.child
         FROM reductions r JOIN goldbach_leases l ON l.run_id=r.run
-        LEFT JOIN cut_premises p ON p.run=r.run ORDER BY r.run,p.position"""):
+        LEFT JOIN cut_premises p ON p.run=r.run
+        {where} ORDER BY r.run,p.position""", params):
         cut = records.setdefault(parent, {}).setdefault(run, {
             "run_id": run, "status": state, "reason": reason, "handle": handle,
             "pr": pr, "head": head, "children": [],

@@ -284,15 +284,26 @@ def authenticated_login():
 
 def list_tasks(problem, limit):
     prefix = "" if problem == "goldbach" else "/problems/" + problem
-    request = urllib.request.Request(
-        f"{SITE}{prefix}/api/status?view=board-gzip",
-        headers={"Accept": "application/json", "Accept-Encoding": "gzip"},
-    )
-    with urllib.request.build_opener(NoRedirect()).open(request, timeout=20) as response:
-        content = response.read()
-        if response.headers.get("Content-Encoding") == "gzip":
-            content = gzip.decompress(content)
-    status = json.loads(content)
+    opener = urllib.request.build_opener(NoRedirect())
+
+    def load(path):
+        request = urllib.request.Request(
+            f"{SITE}{prefix}{path}",
+            headers={"Accept": "application/json", "Accept-Encoding": "gzip"},
+        )
+        with opener.open(request, timeout=20) as response:
+            content = response.read()
+            if response.headers.get("Content-Encoding") == "gzip":
+                content = gzip.decompress(content)
+        return json.loads(content)
+
+    if limit <= 100:
+        try:
+            return load(f"/api/tasks?limit={limit}")
+        except urllib.error.HTTPError as error:
+            if error.code != 404:
+                raise
+    status = load("/api/status?view=board-gzip")
     assignments = status["desk"]["assignments"]
     tasks = [
         gap for gap in status["gaps"]
