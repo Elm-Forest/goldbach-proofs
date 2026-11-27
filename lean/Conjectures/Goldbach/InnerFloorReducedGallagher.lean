@@ -38,8 +38,10 @@ theorem interiorResidueError_eq_zero {q : ℕ} [NeZero q]
     (r : ZMod q) (hr : ¬IsUnit r) :
     GBSkirtVariance.residueError (GBSkirtVariance.window n h (y+h)) primeLog r = 0 := by
   rw [interiorWindowIndices n y h hfull]
-  unfold GBSkirtVariance.residueError GBSkirtVariance.residueSum
+  unfold GBSkirtVariance.residueError
   rw [if_neg hr,sub_zero]
+  change (∑ k ∈ (Icc (y+1) (y+h)).filter (fun k : ℕ => (k:ZMod q)=r),
+    primeLog k)=0
   apply sum_eq_zero
   intro k hk
   obtain ⟨hk',hkr⟩ := mem_filter.mp hk
@@ -56,7 +58,11 @@ theorem interiorResidueError_eq {q : ℕ} [NeZero q] (n y h : ℕ)
     GBSkirtVariance.residueError (GBSkirtVariance.window n h (y+h))
       primeLog (r:ZMod q) = primeWindowResidueError q y h r := by
   rw [interiorWindowIndices n y h hfull]
-  unfold GBSkirtVariance.residueError GBSkirtVariance.residueSum
+  unfold GBSkirtVariance.residueError
+  change (∑ k ∈ (Icc (y+1) (y+h)).filter (fun k : ℕ => (k:ZMod q)=(r:ZMod q)),
+    primeLog k) - (if IsUnit (r:ZMod q) then
+      ((Icc (y+1) (y+h)).card:ℂ)/(q.totient:ℂ) else 0) =
+    primeWindowResidueError q y h r
   simp only [r.isUnit,if_pos,primeWindowResidueError,dif_neg (NeZero.ne q),
     InnerFloorAP.theta,← Nat.cast_add,Nat.floor_natCast,Complex.ofReal_sum,
     Complex.ofReal_div,Complex.ofReal_natCast,primeLog]

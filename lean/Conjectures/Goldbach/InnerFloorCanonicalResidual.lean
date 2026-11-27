@@ -36,7 +36,7 @@ theorem canonicalResidualPointwise (η : ℝ) (hη : 0<η) :
     _ ≤ K*(n:ℝ)^(3/4+2*d)*(D*(n:ℝ)^(η/4)) :=
       mul_le_mul_of_nonneg_left (hlog n hn1) (by positivity)
     _ = K*D*(n:ℝ)^(3/4+2*d+η/4) := by
-      rw [Real.rpow_add hnp]
+      rw [Real.rpow_add hnp (3/4+2*d) (η/4)]
       ring
     _ ≤ K*D*(n:ℝ)^(3/4+η/2) :=
       mul_le_mul_of_nonneg_left (Real.rpow_le_rpow_of_exponent_le hn1 (by linarith))
@@ -71,7 +71,7 @@ theorem summedArcResidualEnergy
             (integrableOn_const (by simp))
           filter_upwards [ae_restrict_mem measurableSet_Ioc] with β hβ
           exact pow_le_pow_left₀ (norm_nonneg _) (hF q hq a
-            (mem_filter.mp ha).1 (mem_filter.mp ha).2 ⟨hβ.1.le,hβ.2⟩) 2
+            (mem_filter.mp ha).1 (mem_filter.mp ha).2 β ⟨hβ.1.le,hβ.2⟩) 2
         _ = _ := by
           rw [← intervalIntegral.integral_of_le (by linarith : -R≤R),
             intervalIntegral.integral_const]
