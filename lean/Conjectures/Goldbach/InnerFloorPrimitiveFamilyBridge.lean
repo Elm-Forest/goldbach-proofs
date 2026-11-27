@@ -73,18 +73,16 @@ theorem primitiveEnergy_le_analyticFamily (A : ℕ) (y h : ℝ) :
       have hq1 : q=1 := by
         letI : NeZero q := ⟨by have := (mem_Icc.mp hq).1; omega⟩
         simpa [DirichletCharacter.IsPrimitive,DirichletCharacter.conductor_one] using hprim.symm
-      subst q
-      have he : (primitiveCharacters 1).filter (fun χ => χ ≠ 1) =
-          (primitiveCharacters 1).erase 1 := by ext χ; simp [and_comm]
-      rw [if_pos rfl]
-      have hsum : (∑ χ∈(primitiveCharacters 1).filter (fun χ => χ ≠ 1),g 1 χ) =
-          ∑ χ∈(primitiveCharacters 1).erase 1,g 1 χ :=
-        congrArg (fun S : Finset (DirichletCharacter ℂ 1) => ∑ χ∈S,g 1 χ) he
-      have hEq : (∑ χ∈primitiveCharacters 1,g 1 χ) =
-          (∑ χ∈(primitiveCharacters 1).filter (fun χ => χ ≠ 1),g 1 χ)+P :=
-        (sum_erase_add _ _ hmem).symm.trans
-          (congrArg (fun z : ℝ => z+P) hsum.symm)
-      exact hEq.le
+      have he : (primitiveCharacters q).filter (fun χ => χ ≠ 1) =
+          (primitiveCharacters q).erase 1 := by ext χ; simp [and_comm]
+      rw [if_pos hq1,he]
+      have hgP : g q (1:DirichletCharacter ℂ q) = P := by
+        subst q
+        rfl
+      calc
+        _ = (∑ χ∈(primitiveCharacters q).erase 1,g q χ)+g q 1 :=
+          (sum_erase_add _ _ hmem).symm
+        _ = _ := by rw [hgP]
     · have he : (primitiveCharacters q).filter (fun χ => χ ≠ 1) =
           primitiveCharacters q := by
         ext χ
