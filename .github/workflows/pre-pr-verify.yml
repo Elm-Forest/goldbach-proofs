@@ -1,0 +1,43 @@
+name: Pre-PR single-file kernel verification (WideRemainderInnerFloor)
+on:
+  push:
+    branches: [pre-pr/L-goldbach-wide-remainder-inner-floor-route-b]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up pinned Lean and Mathlib
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain leanprover/lean4:v4.36.0
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+          cd lean
+          lake exe cache get
+      - name: Build official DyadicCellShortPrimeFloor dependency
+        run: |
+          cd lean
+          lake build Conjectures.Goldbach.DyadicCellShortPrimeFloor
+      - name: Verify exact single-file pre-PR candidate in kernel
+        run: |
+          cd lean
+          echo "ca6fd367b05cfce6784dab7da45e8858b6497c7cd9fc7e5c590847bf29c6d39c  Conjectures/Goldbach/WideRemainderInnerFloor.lean" | sha256sum -c -
+          lake env lean Conjectures/Goldbach/WideRemainderInnerFloor.lean 2>&1 | tee /tmp/pre_pr_verify.log
+          python3 - << 'PY'
+          import pathlib, re
+          log = pathlib.Path('/tmp/pre_pr_verify.log').read_text()
+          assert 'sorryAx' not in log, 'Found sorryAx!'
+          assert 'error:' not in log, 'Found error!'
+          matches = re.findall(r'depends on axioms: \[([^\]]*)\]', log)
+          assert len(matches) == 59, f'Expected 59 axiom audits, got {len(matches)}'
+          for m in matches:
+              axs = {a.strip() for a in m.split(',') if a.strip()}
+              assert axs <= {'propext', 'Classical.choice', 'Quot.sound'}, f'Unexpected axioms: {axs}'
+          print(f'PRE-PR KERNEL AUDIT PASS: {len(matches)} declarations, standard 3 axioms only!')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pre-pr-WideRemainderInnerFloor-log
+          path: /tmp/pre_pr_verify.log
