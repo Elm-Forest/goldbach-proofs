@@ -2,7 +2,7 @@ name: Lean preflight (conductor-sensitive projection)
 on:
   push:
     branches:
-      - cloud-preflight/inner-polynomial-window-20261127
+      - cloud-preflight/inner-window-energy-20261127
 permissions:
   contents: read
 jobs:
@@ -28,5 +28,5 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.elan/bin:$PATH"
           lake env lean Conjectures/Goldbach/InnerFloorDensityBudget.lean
-          lake build Conjectures.Goldbach.InnerFloorPolynomialWindow Conjectures.Goldbach.InnerFloorConductorLift Conjectures.Goldbach.InnerFloorPhysicalL2
-          echo "PREFLIGHT PASS: polynomial explicit formula and projection repairs"
+          lake build Conjectures.Goldbach.InnerFloorGoodZeroAssembly Conjectures.Goldbach.InnerFloorNearOneSparsity Conjectures.Goldbach.InnerFloorHighBadZeros Conjectures.Goldbach.InnerFloorWindowFormulaEnergy
+          echo "PREFLIGHT PASS: primitive window energy and exceptional-zero localization"
