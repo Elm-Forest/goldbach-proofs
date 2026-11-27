@@ -58,7 +58,7 @@ theorem interiorResidueError_eq {q : ℕ} [NeZero q] (n y h : ℕ)
   rw [interiorWindowIndices n y h hfull]
   unfold GBSkirtVariance.residueError GBSkirtVariance.residueSum
   simp only [r.isUnit,if_pos,primeWindowResidueError,dif_neg (NeZero.ne q),
-    ShortAP.theta,← Nat.cast_add,Nat.floor_natCast,Complex.ofReal_sum,
+    InnerFloorAP.theta,← Nat.cast_add,Nat.floor_natCast,Complex.ofReal_sum,
     Complex.ofReal_div,Complex.ofReal_natCast,primeLog]
   congr 1
   have hc : (Icc (y+1) (y+h)).card=h := by rw [Nat.card_Icc]; omega
@@ -87,7 +87,7 @@ same logarithmic conductor-lifting bound. No additional q factor. -/
 theorem interiorReducedMovingFamilyEnergy (A n y h : ℕ)
     (hAy : A≤y) (hfull : y+h≤n) :
     (∑ q∈Icc 1 A,reducedMovingLevelEnergy q n h (y+h)) ≤
-      (ShortAPLinearTotient.weightConstant*(1+Real.log A))^2 *
+      (InnerFloorLinearTotient.weightConstant*(1+Real.log A))^2 *
         ∑ d∈Icc 1 A,primitivePrimeWindowEnergy d y h := by
   calc
     _ = ∑ q∈Icc 1 A, reducedLevelEnergy

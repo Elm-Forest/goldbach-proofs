@@ -1,4 +1,4 @@
-import Conjectures.Goldbach.ShortProgressionsMeanTheta
+import Conjectures.Goldbach.InnerFloorArithmeticCore
 import Conjectures.Goldbach.DyadicCellShortPrimeFloor
 
 /-!
@@ -56,20 +56,20 @@ theorem windowIndices_eq (y : ℝ) (h : ℕ) (hy : 0 ≤ y) :
 
 theorem centeredPrimeWindowError (χ : PrimitiveComplexCharacter)
     {X y : ℝ} (h : ℕ) (hy : 0 ≤ y) (hX : y+(h:ℝ) ≤ X) :
-    ‖V4q χ h y - ShortAP.centeredPrimeSum χ.character y h‖ ≤
+    ‖V4q χ h y - InnerFloorAP.centeredPrimeSum χ.character y h‖ ≤
       Chebyshev.psi X-Chebyshev.theta X := by
   let s := V9a h y
   have hsub : s ⊆ Ioc 0 ⌊X⌋₊ := by
     intro k hk
     have hm : k∈Icc (⌊y⌋₊+1) ⌊y+(h:ℝ)⌋₊ := by
       simpa only [s,windowIndices_eq y h hy] using hk
-    have hk' := (ShortAP.mem_window hy (Nat.cast_nonneg h) k).mp hm
+    have hk' := (InnerFloorAP.mem_window hy (Nat.cast_nonneg h) k).mp hm
     exact mem_Ioc.mpr ⟨by exact_mod_cast hy.trans_lt hk'.1,
       (Nat.le_floor_iff (by linarith [Nat.cast_nonneg h])).2 (hk'.2.trans hX)⟩
   have he := weightedPrimePowerError s X hsub
     (fun k => χ.character (k:ZMod χ.modulus))
     (fun k _ => DirichletCharacter.norm_le_one _ _)
-  unfold V4q ShortAP.centeredPrimeSum
+  unfold V4q InnerFloorAP.centeredPrimeSum
   rw [if_neg χ.nontrivial,sub_zero,← windowIndices_eq y h hy]
   simp only [Vl,mul_comm (χ.character _),logPrimeWeight] at he ⊢
   exact he
@@ -81,7 +81,7 @@ theorem primitivePrimeWindowErrorEnergy (F : Finset PrimitiveComplexCharacter)
     (Q h : ℕ) {X : ℝ} (hX : 1≤X) (hh : (h:ℝ)≤X)
     (hF : ∀ χ∈F, χ.modulus≤Q) :
     (∑ χ∈F, ∫ y in X..2*X,
-      ‖V4q χ h y-ShortAP.centeredPrimeSum χ.character y h‖^2) ≤
+      ‖V4q χ h y-InnerFloorAP.centeredPrimeSum χ.character y h‖^2) ≤
       X*(Q:ℝ)^2*(2*Real.sqrt (3*X)*Real.log (3*X))^2 := by
   let M := 2*Real.sqrt (3*X)*Real.log (3*X)
   have hM : 0≤M := by
@@ -89,12 +89,12 @@ theorem primitivePrimeWindowErrorEnergy (F : Finset PrimitiveComplexCharacter)
     dsimp [M]
     positivity
   have hterm (χ : PrimitiveComplexCharacter) :
-      (∫ y in X..2*X, ‖V4q χ h y-ShortAP.centeredPrimeSum χ.character y h‖^2) ≤
+      (∫ y in X..2*X, ‖V4q χ h y-InnerFloorAP.centeredPrimeSum χ.character y h‖^2) ≤
         X*M^2 := by
     have hXX : X≤2*X := by linarith
     rw [intervalIntegral.integral_of_le hXX]
     have hb : ∀ y∈Set.Ioc X (2*X),
-        ‖V4q χ h y-ShortAP.centeredPrimeSum χ.character y h‖^2≤M^2 := by
+        ‖V4q χ h y-InnerFloorAP.centeredPrimeSum χ.character y h‖^2≤M^2 := by
       intro y hy
       apply pow_le_pow_left₀ (norm_nonneg _) _ 2
       exact (centeredPrimeWindowError χ h (by linarith [hy.1])

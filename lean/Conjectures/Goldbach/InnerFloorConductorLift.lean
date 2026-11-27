@@ -1,6 +1,6 @@
 import Mathlib
 import Conjectures.Goldbach.InnerFloorReducedGaussEnergy
-import Conjectures.Goldbach.ShortProgressionsMeanTheta
+import Conjectures.Goldbach.InnerFloorArithmeticCore
 
 /-!
 Reduced-numerator conductor aggregation. This is an auxiliary research
@@ -33,7 +33,7 @@ theorem reducedFamilyEnergy (A : ℕ)
           ‖unitCharacterError (b q) (DirichletCharacter.changeLevel hd ψ)‖^2) ≤ F d) :
     (∑ q ∈ Icc 1 A, reducedLevelEnergy b q) ≤
       (∑ d ∈ Icc 1 A, (d : ℝ)*F d/(d.totient : ℝ)) *
-        (ShortAPLinearTotient.weightConstant*(1+Real.log A)) := by
+        (InnerFloorLinearTotient.weightConstant*(1+Real.log A)) := by
   have hterm (q : ℕ) (hq : q ∈ Icc 1 A) :
       reducedLevelEnergy b q ≤ (∑ d ∈ q.divisors, (d : ℝ)*F d)/(q.totient : ℝ) := by
     have hq0 : 0 < q := (mem_Icc.mp hq).1
@@ -57,7 +57,7 @@ theorem reducedFamilyEnergy (A : ℕ)
       _ ≤ _ := mul_le_mul_of_nonneg_left (hcompat q (mem_Icc.mp hq).2 d.1 hd)
         (Nat.cast_nonneg _)
   exact (sum_le_sum hterm).trans
-    (ShortAPLinearTotient.sum_conductor_weights A (fun d => (d : ℝ)*F d)
+    (InnerFloorLinearTotient.sum_conductor_weights A (fun d => (d : ℝ)*F d)
       (fun d => mul_nonneg (Nat.cast_nonneg _) (hF d)))
 
 /-- Two logarithms, rather than a polynomial factor in A, suffice to lift
@@ -69,11 +69,11 @@ theorem reducedFamilyEnergyLog (A : ℕ)
         (∑ ψ ∈ primitiveCharacters d,
           ‖unitCharacterError (b q) (DirichletCharacter.changeLevel hd ψ)‖^2) ≤ F d) :
     (∑ q ∈ Icc 1 A, reducedLevelEnergy b q) ≤
-      (ShortAPLinearTotient.weightConstant*(1+Real.log A))^2 *
+      (InnerFloorLinearTotient.weightConstant*(1+Real.log A))^2 *
         ∑ d ∈ Icc 1 A, F d := by
-  let W := ShortAPLinearTotient.weightConstant
+  let W := InnerFloorLinearTotient.weightConstant
   let L := 1 + Real.log A
-  have hW : 0 ≤ W := ShortAPLinearTotient.weightConstant_nonneg
+  have hW : 0 ≤ W := InnerFloorLinearTotient.weightConstant_nonneg
   have hL : 0 ≤ L := by
     dsimp [L]
     linarith [Real.log_natCast_nonneg A]
@@ -82,7 +82,7 @@ theorem reducedFamilyEnergyLog (A : ℕ)
     rw [mul_sum]
     apply sum_le_sum
     intro d hd
-    have h := ShortAPLinearTotient.ratio_totient_le d (mem_Icc.mp hd).1
+    have h := InnerFloorLinearTotient.ratio_totient_le d (mem_Icc.mp hd).1
     have hd0 : (0 : ℝ) < d := by exact_mod_cast (mem_Icc.mp hd).1
     have hdA : (d : ℝ) ≤ A := by exact_mod_cast (mem_Icc.mp hd).2
     have hl := Real.log_le_log hd0 hdA
@@ -100,21 +100,21 @@ theorem reducedFamilyEnergyLog (A : ℕ)
 def primeWindowResidueError (q : ℕ) (y h : ℝ) (r : (ZMod q)ˣ) : ℂ :=
   if hq : q = 0 then 0 else
     letI : NeZero q := ⟨hq⟩
-    (ShortAP.theta q (r : ZMod q) y h : ℂ) -
+    (InnerFloorAP.theta q (r : ZMod q) y h : ℂ) -
       ((h/(q.totient : ℝ) : ℝ) : ℂ)
 
 theorem primeWindowCharacterError {q : ℕ} [NeZero q] (y h : ℝ)
     (χ : DirichletCharacter ℂ q) :
     unitCharacterError (primeWindowResidueError q y h) χ =
-      ShortAP.centeredPrimeSum χ y h := by
+      InnerFloorAP.centeredPrimeSum χ y h := by
   classical
-  unfold unitCharacterError ShortAP.centeredPrimeSum
+  unfold unitCharacterError InnerFloorAP.centeredPrimeSum
   simp only [primeWindowResidueError, dif_neg (NeZero.ne q), sub_mul, sum_sub_distrib]
   congr 1
   · rw [sum_units_eq_sum
-      (fun r : ZMod q => (ShortAP.theta q r y h : ℂ)*χ r)
+      (fun r : ZMod q => (InnerFloorAP.theta q r y h : ℂ)*χ r)
       (fun r hr => by rw [MulChar.map_nonunit χ hr, mul_zero])]
-    simp only [ShortAP.theta, Complex.ofReal_sum, sum_filter, apply_ite,
+    simp only [InnerFloorAP.theta, Complex.ofReal_sum, sum_filter, apply_ite,
       Complex.ofReal_zero, sum_mul, ite_mul, zero_mul]
     rw [sum_comm]
     apply sum_congr rfl
@@ -130,20 +130,20 @@ theorem primeWindowCharacterError {q : ℕ} [NeZero q] (y h : ℝ)
     · simp [hc]
 
 def primitivePrimeWindowEnergy (d : ℕ) (y h : ℝ) : ℝ :=
-  ∑ ψ ∈ primitiveCharacters d, ‖ShortAP.centeredPrimeSum ψ y h‖^2
+  ∑ ψ ∈ primitiveCharacters d, ‖InnerFloorAP.centeredPrimeSum ψ y h‖^2
 
 theorem primeWindowReducedFamilyEnergy (A : ℕ) (y h : ℝ)
     (hy : (A : ℝ) ≤ y) (hh : 0 ≤ h) :
     (∑ q ∈ Icc 1 A, reducedLevelEnergy
       (fun q r => primeWindowResidueError q y h r) q) ≤
-      (ShortAPLinearTotient.weightConstant*(1+Real.log A))^2 *
+      (InnerFloorLinearTotient.weightConstant*(1+Real.log A))^2 *
         ∑ d ∈ Icc 1 A, primitivePrimeWindowEnergy d y h := by
   apply reducedFamilyEnergyLog
   · intro d
     exact sum_nonneg fun _ _ => sq_nonneg _
   · intro q inst hq d hd
     have hqy : (q : ℝ) ≤ y := (by exact_mod_cast hq : (q : ℝ) ≤ A).trans hy
-    simp only [primeWindowCharacterError, ShortAP.centeredPrimeSum_changeLevel hd _ hqy hh,
+    simp only [primeWindowCharacterError, InnerFloorAP.centeredPrimeSum_changeLevel hd _ hqy hh,
       primitivePrimeWindowEnergy, le_refl]
 
 end
