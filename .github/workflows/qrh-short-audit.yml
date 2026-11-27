@@ -148,7 +148,14 @@ jobs:
               lines.insert(i,'\nset_option maxHeartbeats '+str(budget)+'\n')
               p.write_text(''.join(lines))
           resource_budget('OAI/NumberTheory/DirichletL/Poisson/BinaryGaussian.lean',10000000)
-          resource_budget('RellichKondrachov/Analysis/FunctionalSpaces/Sobolev/Euclidean/L2Compactness/Approximation.lean',10000000)
+          resource_budget('RellichKondrachov/Analysis/FunctionalSpaces/Sobolev/Euclidean/L2Compactness/Approximation.lean',30000000)
+          edit('RellichKondrachov/Analysis/FunctionalSpaces/Sobolev/Euclidean/L2Compactness/Approximation.lean',[
+           ('    exact hv_sq.congr (hSF_ae.pow_const 2)',
+            """    have hAE_sq : (fun x : E => ((S - F : E →₂[(volume : Measure E)] ℝ) x) ^ 2)
+                =ᵐ[(volume : Measure E)] (fun x : E =>
+                  (smoothFun (E := E) (K := K) ψ u x - f x) ^ 2) := hSF_ae.pow_const 2
+              exact hv_sq.congr hAE_sq""")
+          ])
           print("Applied short round three")
           PY
           git diff --stat
@@ -178,6 +185,84 @@ jobs:
           export LEAN_NUM_THREADS=4
           time lake build QRHShortAudit 2>&1 | tee build-short.log
           lake env lean CheckAxioms.lean | tee axioms-short.log
+      - name: Actual short declaration dependency cone
+        run: |
+          set -euxo pipefail
+          cd /tmp/short-qrh
+          export PATH="$HOME/.elan/bin:$PATH"
+          cat > AuditCone.lean <<'LEAN'
+          import QRHShortAudit
+          import Lean.Util.CollectAxioms
+          
+          /-! Follow every project-owned constant referenced by the elaborated
+          theorem's type and proof. Imported Mathlib/core declarations are a
+          boundary (they cannot depend on the later project). This is an audit,
+          not an alternative proof or permission to import a private module. -/
+          open Lean Elab Command
+          set_option maxRecDepth 100000
+          set_option maxHeartbeats 0
+          
+          partial def shortAuditExpr (e : Expr) (s : Std.HashSet Name) : Std.HashSet Name :=
+            match e with
+            | .const n _ => s.insert n
+            | .app f a => shortAuditExpr a (shortAuditExpr f s)
+            | .lam _ t b _ => shortAuditExpr b (shortAuditExpr t s)
+            | .forallE _ t b _ => shortAuditExpr b (shortAuditExpr t s)
+            | .letE _ t v b _ => shortAuditExpr b (shortAuditExpr v (shortAuditExpr t s))
+            | .mdata _ b => shortAuditExpr b s
+            | .proj n _ b => shortAuditExpr b (s.insert n)
+            | _ => s
+          
+          def shortOwner (env : Environment) (n : Name) : String :=
+            match env.getModuleIdxFor? n with
+            | some i => toString (env.header.moduleNames[i.toNat]!)
+            | none => "<local-or-unknown>"
+          
+          def shortProjectOwner (mod : String) : Bool :=
+            mod.startsWith "OAI." || mod.startsWith "RellichKondrachov." ||
+              mod.startsWith "PrimeNumberTheoremAnd." || mod == "QRHShortAudit"
+          
+          partial def shortAuditClosure (env : Environment) (todo : List Name)
+              (seen : Std.HashSet Name) (project : Std.HashSet Name)
+              (boundary : Std.HashSet Name) :
+              Std.HashSet Name × Std.HashSet Name :=
+            match todo with
+            | [] => (project,boundary)
+            | n :: rest =>
+              if seen.contains n then shortAuditClosure env rest seen project boundary
+              else
+                let seen := seen.insert n
+                if !(shortProjectOwner (shortOwner env n)) then
+                  shortAuditClosure env rest seen project (boundary.insert n)
+                else
+                  let project := project.insert n
+                  match env.find? n with
+                  | none => shortAuditClosure env rest seen project boundary
+                  | some info =>
+                    let deps := shortAuditExpr info.type {}
+                    let deps := match info with
+                      | .thmInfo i => shortAuditExpr i.value deps
+                      | .defnInfo i => shortAuditExpr i.value deps
+                      | .opaqueInfo i => shortAuditExpr i.value deps
+                      | .inductInfo i => i.ctors.foldl (fun s c => s.insert c) deps
+                      | _ => deps
+                    shortAuditClosure env (deps.toList ++ rest) seen project boundary
+          
+          run_cmd do
+            let env ← getEnv
+            let root := ``qrhShort_exactUniformStrip
+            let (project,boundary) := shortAuditClosure env [root] {} {} {}
+            let names := project.toList
+            let rows := names.map fun n => shortOwner env n ++ "\t" ++ toString n
+            let modules := names.foldl (fun (s : Std.HashSet String) n =>
+              s.insert (shortOwner env n)) {}
+            let unknown := boundary.toList.filter fun n => shortOwner env n == "<local-or-unknown>"
+            liftIO <| IO.FS.writeFile "short-proof-cone.tsv" (String.intercalate "\n" rows)
+            liftIO <| IO.FS.writeFile "short-proof-boundary.txt"
+              (String.intercalate "\n" (boundary.toList.map fun n => shortOwner env n ++ "\t" ++ toString n))
+            logInfo m!"project declarations: {project.size}; project modules: {modules.size}; external boundary constants: {boundary.size}; unknown owners: {unknown.length}"
+          LEAN
+          lake env lean AuditCone.lean | tee cone-short.log
       - uses: actions/cache/save@v4
         if: always()
         continue-on-error: true
@@ -193,4 +278,7 @@ jobs:
             /tmp/short-qrh/port-short.diff
             /tmp/short-qrh/build-short.log
             /tmp/short-qrh/axioms-short.log
+            /tmp/short-qrh/cone-short.log
+            /tmp/short-qrh/short-proof-cone.tsv
+            /tmp/short-qrh/short-proof-boundary.txt
           if-no-files-found: ignore
