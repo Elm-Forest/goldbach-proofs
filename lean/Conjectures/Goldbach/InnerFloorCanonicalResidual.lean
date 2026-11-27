@@ -71,7 +71,7 @@ theorem summedArcResidualEnergy
             (integrableOn_const (by simp))
           filter_upwards [ae_restrict_mem measurableSet_Ioc] with β hβ
           exact pow_le_pow_left₀ (norm_nonneg _) (hF q hq a
-            (mem_filter.mp ha).1 (mem_filter.mp ha).2 β ⟨hβ.1.le,hβ.2⟩) 2
+            (mem_filter.mp ha).1 (mem_filter.mp ha).2 β ⟨by simpa [R,neg_div] using hβ.1.le,by simpa [R] using hβ.2⟩) 2
         _ = _ := by
           rw [← intervalIntegral.integral_of_le (by linarith : -R≤R),
             intervalIntegral.integral_const]

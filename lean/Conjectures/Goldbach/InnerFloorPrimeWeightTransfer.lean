@@ -65,7 +65,7 @@ theorem centeredPrimeWindowError (χ : PrimitiveComplexCharacter)
       simpa only [s,windowIndices_eq y h hy] using hk
     have hk' := (InnerFloorAP.mem_window hy (Nat.cast_nonneg h) k).mp hm
     exact mem_Ioc.mpr ⟨by exact_mod_cast hy.trans_lt hk'.1,
-      (Nat.le_floor_iff (by linarith [Nat.cast_nonneg h])).2 (hk'.2.trans hX)⟩
+      (Nat.le_floor_iff (by linarith [Nat.cast_nonneg (α := ℝ) h])).2 (hk'.2.trans hX)⟩
   have he := weightedPrimePowerError s X hsub
     (fun k => χ.character (k:ZMod χ.modulus))
     (fun k _ => DirichletCharacter.norm_le_one _ _)
@@ -105,9 +105,10 @@ theorem primitivePrimeWindowErrorEnergy (F : Finset PrimitiveComplexCharacter)
           (integrableOn_const (by simp)) (by
             filter_upwards [ae_restrict_mem measurableSet_Ioc] with y hy
             exact hb y hy)
-      _ = _ := by rw [← intervalIntegral.integral_of_le hXX,intervalIntegral.integral_const]
-                   simp only [smul_eq_mul]
-                   ring
+      _ = _ := by
+        rw [← intervalIntegral.integral_of_le hXX,intervalIntegral.integral_const]
+        simp only [smul_eq_mul]
+        ring
   calc
     _ ≤ ∑ _χ∈F, X*M^2 := sum_le_sum fun χ _ => hterm χ
     _ = (F.card:ℝ)*(X*M^2) := by simp [nsmul_eq_mul]
