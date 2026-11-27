@@ -331,6 +331,12 @@ class CutFlow(DeskServerTestCase):
         with self.assertRaisesRegex(ProofRejected, "reduce-shape"):
             self.compile(bad, f"import Mathlib.Data.Nat.Basic\ntheorem {bad} (h : True) : ({P}) := Nat.zero_add\n",
                          P, "reduce")
+        cast = "Conjectures.Cuts.CoercionCut"
+        premise = "let r := fun x : ℕ => Nat.floor ((x : ℝ) ^ (1/3 : ℝ)); ∀ x : ℕ, r x ≤ x"
+        accepted = self.compile(cast, f"import Mathlib\ntheorem {cast} : ({premise}) → ({B}) → ({P}) := by\n"
+                                      "  intro _ _ n; exact Nat.zero_add n\n", P, "reduce")
+        self.assertEqual(len(accepted["children"]), 2)
+        self.assertIn("ℝ", accepted["children"][0])
         result = dict(parent=PARENT, run=plan["run"], plan_hash=key, source=source, manifest=manifest)
         self.request(DESK + "assembly-complete", dict(result, plan_hash="a" * 64), signed=True, expected=409)
         for _ in range(2):
