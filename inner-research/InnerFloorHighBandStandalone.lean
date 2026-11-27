@@ -1837,4 +1837,91 @@ theorem subsetBound (Q : ℝ) (n A B : ℕ) (D : Set ℝ)
       have he'' : 18*Real.log n ≤ 24*(1+Real.log n)^2 := by nlinarith [sq_nonneg (Real.log (n:ℝ))]
       nlinarith only [mul_le_mul_of_nonneg_left he'' (mul_nonneg hx.le hQ)]
 
+private theorem highBandLog (n : ℕ) (hn : 2≤n) :
+    (Nat.log 2 (n+2):ℝ) ≤ 4*Real.log n := by
+  have hb := Real.natLog_le_logb (n+2) 2
+  rw [Real.logb] at hb
+  push_cast at hb
+  have h2 : (1/2:ℝ) ≤ Real.log 2 := by linarith [Real.log_two_gt_d9]
+  have hx : (2:ℝ)≤n := by exact_mod_cast hn
+  have hh : (n:ℝ)+2 ≤ (n:ℝ)^2 := by nlinarith [mul_nonneg (show 0≤(n:ℝ)-2 by linarith) (show 0≤(n:ℝ)+1 by linarith)]
+  have hl := Real.log_le_log (by positivity : 0<(n:ℝ)+2) hh
+  rw [Real.log_pow] at hl
+  norm_num at hl
+  have hx' := (le_div_iff₀ (by linarith : 0<Real.log 2)).mp hb
+  have hm := mul_le_mul_of_nonneg_left h2 (Nat.cast_nonneg (Nat.log 2 (n+2)) : (0:ℝ)≤_)
+  linarith only [hl,hx',hm]
+
+
+open Filter
+open scoped Topology
+
+/-- The part with denominators above n^(1/5) has absolute mass o(n), even after
+an arbitrary additional mask. The remaining lower-denominator part is not addressed. -/
+theorem highBandLittleO (e : ℝ) (he : 0 < e) :
+    ∀ᶠ n : ℕ in atTop, ∀ D : Set ℝ,
+      D ⊆ realBandSet ((Nat.log 2 (n+2):ℝ)^2 * (n:ℝ)^(1/6:ℝ)) n
+        ⌊(n:ℝ)^(1/5:ℝ)⌋₊ ⌊(n:ℝ)^(1/3:ℝ)⌋₊ →
+      ‖∫ t in (0:ℝ)..1, D.indicator
+          (fun t => (primeSum n t)^2 * phase (-(n:ℝ)*t)) t‖ ≤ e*(n:ℝ) := by
+  have ht : Tendsto (fun n : ℕ => (n:ℝ)) atTop atTop := tendsto_natCast_atTop_atTop
+  have hp := (tendsto_rpow_atTop (by norm_num : (0:ℝ)<1/5)).comp ht
+  have hc := ((isLittleO_log_rpow_rpow_atTop (4:ℝ) (by norm_num : (0:ℝ)<1/30)).comp_tendsto ht).bound
+    (by positivity : 0 < e/4000)
+  filter_upwards [eventually_ge_atTop (2:ℕ),
+    (Real.tendsto_log_atTop.comp ht).eventually_ge_atTop 1,
+    hp.eventually_ge_atTop 2,hc] with n hn hL hu hsmall
+  intro D hD
+  let L := Real.log (n:ℝ)
+  let u := (n:ℝ)^(1/5:ℝ)
+  let v := (n:ℝ)^(1/6:ℝ)
+  let Q := (Nat.log 2 (n+2):ℝ)^2 * v
+  let A : ℕ := ⌊u⌋₊
+  let B : ℕ := ⌊(n:ℝ)^(1/3:ℝ)⌋₊
+  have hnR : (0:ℝ)<n := by exact_mod_cast (show 0<n by omega)
+  have hX : (1:ℝ)≤n := by exact_mod_cast (show 1≤n by omega)
+  have hu2 : 2≤u := hu
+  have hA : 1≤A := Nat.floor_pos.mpr (by linarith : 1≤u)
+  have hAp : (0:ℝ)<A := by exact_mod_cast hA
+  have hA1 : (1:ℝ)≤A := by exact_mod_cast hA
+  have huA : u ≤ 2*(A:ℝ) := by
+    have hf := Nat.lt_floor_add_one u
+    change u < (A:ℝ)+1 at hf
+    linarith
+  have hB : 0<B := Nat.floor_pos.mpr (Real.one_le_rpow hX (by norm_num))
+  have hBsq : B^2≤n := FrontierBand.denomSquare n hn _ (by norm_num)
+  have hv : 0≤v := Real.rpow_nonneg hnR.le _
+  have hQ : 0≤Q := mul_nonneg (sq_nonneg _) hv
+  have hlog := highBandLog n hn
+  have hlogSq := pow_le_pow_left₀ (Nat.cast_nonneg (Nat.log 2 (n+2)) : (0:ℝ)≤_) hlog 2
+  have hQb : Q ≤ 16*L^2*v := by
+    have h := mul_le_mul_of_nonneg_right hlogSq hv
+    dsimp [Q,L] at *
+    nlinarith only [h]
+  have hL1 : 1≤L := hL
+  have hLsq : (1+L)^2 ≤ 4*L^2 := by nlinarith
+  have hmul := mul_le_mul hQb hLsq (sq_nonneg _) (by positivity : 0≤16*L^2*v)
+  have hs : L^4 ≤ (e/4000)*(n:ℝ)^(1/30:ℝ) := by
+    change ‖Real.log (n:ℝ)^(4:ℝ)‖ ≤ (e/4000)*‖(n:ℝ)^(1/30:ℝ)‖ at hsmall
+    simpa only [L,Real.rpow_ofNat,Real.norm_of_nonneg (by positivity : 0≤(Real.log (n:ℝ))^4),
+      Real.norm_of_nonneg (Real.rpow_nonneg hnR.le (1/30:ℝ))] using hsmall
+  have hpow : (n:ℝ)^(1/30:ℝ)*v = u := by
+    dsimp [u,v]
+    rw [← Real.rpow_add hnR]
+    norm_num
+  have hbudget : 24*Q*(1+L)^2 ≤ e*(A:ℝ) := by
+    calc
+      _ ≤ 1536*L^4*v := by nlinarith only [hmul]
+      _ ≤ 1536*((e/4000)*(n:ℝ)^(1/30:ℝ))*v := by gcongr
+      _ = (1536/4000:ℝ)*e*u := by rw [← hpow]; ring
+      _ ≤ e*(A:ℝ) := by
+        nlinarith only [mul_le_mul_of_nonneg_left huA he.le,
+          mul_nonneg he.le (Nat.cast_nonneg A : (0:ℝ)≤A)]
+  have hbound := subsetBound Q n A B D hQ hA hB hBsq hn hD
+  refine hbound.trans ?_
+  apply (div_le_iff₀ hAp).2
+  have h := mul_le_mul_of_nonneg_right hbudget hnR.le
+  dsimp [L] at h
+  nlinarith only [h]
+
 end InnerFloorResearch
