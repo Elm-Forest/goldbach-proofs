@@ -1627,9 +1627,7 @@ body:not([data-problem]) .hero .open-status { vertical-align: middle; }
   position: relative;
 }
 .discussion-code img {
-  /* Frame the 408px square at (196, 462), including the QR quiet zone. */
-  position: absolute; width: 196.078431%; max-width: none; height: auto;
-  left: -48.039216%; top: -113.235294%;
+  display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated;
 }
 .core-qr img {
   display: block; width: 100%; height: 100%;
@@ -1724,8 +1722,9 @@ body:not([data-problem]) .hero .open-status { vertical-align: middle; }
   padding: .4rem .7rem;
   background: var(--paper);
 }
-.agent-brand-icon { flex: 0 0 32px; width: 32px; height: 32px; display: inline-grid; place-items: center; border-radius: 6px; background: #edeae3; font-size: .875rem; }
-.agent-brand-icon.has-brand { background-image: url("agent-icons.png"); background-color: transparent; background-size: 1088px 32px; }
+.agent-brand-icon { flex: 0 0 32px; width: 32px; height: 32px; display: inline-grid; place-items: center; border-radius: 6px; background: #edeae3; color: var(--ink); font-size: .875rem; }
+.agent-brand-icon.has-brand { background-color: transparent; }
+.agent-brand-svg { width: 28px; height: 28px; display: block; }
 
 /* Route summaries share status and task membership with the public desk. */
 .goldbach-tracks .route-panel { border-top: 1px solid var(--line); }

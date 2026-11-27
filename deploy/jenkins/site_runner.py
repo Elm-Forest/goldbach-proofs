@@ -10,7 +10,9 @@ import subprocess
 import tempfile
 from contextlib import closing
 from pathlib import Path
-from threading import BoundedSemaphore
+from threading import BoundedSemaphore, Thread
+
+from assemble import poll as poll_assemblies
 
 from formal_proof import judge
 from github_app import GitHubApp
@@ -141,6 +143,11 @@ def main():
     with RunnerServer(str(SOCKET), Handler) as server:
         os.chown(SOCKET, 0, 1000)
         SOCKET.chmod(0o660)
+        desk_url = os.environ.get("GOLDBACH_DESK_URL")
+        secret_file = os.environ.get("GOLDBACH_DESK_SECRET_FILE")
+        if desk_url and secret_file:
+            Thread(target=poll_assemblies, daemon=True,
+                   args=(server.slots, TRUSTED_BASE, ROOT, desk_url.rstrip("/"), secret_file)).start()
         server.serve_forever()
 
 

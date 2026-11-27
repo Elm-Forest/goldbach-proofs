@@ -19,6 +19,7 @@ from threading import BoundedSemaphore, Lock, Thread
 from urllib.parse import parse_qs, urlsplit
 
 from desk import Desk, QUEUE_BATCH, model_catalog_payload
+import reductions
 from landau import BASELINE, exponent_record
 from presence import SitePresence
 from zhihu_oauth import BASE as ZHIHU_PATH, ZhihuOAuth
@@ -81,12 +82,21 @@ for slug, problem in PROBLEMS.items():
             raise ValueError(f"Invalid or duplicate task: {gap['id']}")
         problem_ids.add(gap["id"])
 DESKS = {"goldbach": DESK, **{
-    slug: Desk(DB.with_name(slug + ".sqlite3"), problem["gaps"], SECRET, OPENINGS)
+    slug: Desk(DB.with_name(slug + ".sqlite3"), problem["gaps"], SECRET, OPENINGS, slug=slug)
     for slug, problem in PROBLEMS.items()
 }}
 GAP_DESKS = {
     gap_id: slug for slug, desk in DESKS.items() for gap_id in desk.gaps
 }
+
+def gap_desk(gap):
+    slug = GAP_DESKS.get(gap)
+    if slug is None:
+        child = reductions.GENERATED_ID.fullmatch(gap)
+        slug = child[1] if child else None
+    return DESKS.get(slug)
+
+
 PRESENCE = SitePresence(DESKS.values())
 PAGE_VIEWS_DB = DB.with_name("page-views.sqlite3")
 IP_KEY_PATH = DB.with_name("ip-count.key")
@@ -127,7 +137,7 @@ Thread(target=refresh_presence_counts, name="presence-counts", daemon=True).star
 
 
 ASSETS = {
-    "/agent-icons.png": "image/png",
+    "/agent-icons.svg": "image/svg+xml",
     "/core-team-signup.png": "image/png",
     sponsors.STYLE: "text/css",
     sponsors.SCRIPT: "text/javascript",
@@ -147,7 +157,7 @@ def asset_version(name):
     return hashlib.sha256(path.read_bytes()).hexdigest()[:8] if path.exists() else ""
 
 
-ASSET_VERSIONS = {name: asset_version(name) for name in ("site.css", "site.js")}
+ASSET_VERSIONS = {name: asset_version(name) for name in ("site.css", "site.js", "agent-icons.svg")}
 
 
 def version_assets(page, prefix=""):
@@ -162,7 +172,7 @@ def compressed_asset(content):
     return gzip.compress(content, compresslevel=6, mtime=0)
 
 
-DISCUSSION_EXPIRES = datetime.fromisoformat("2026-12-02T00:00:00+08:00")
+DISCUSSION_EXPIRES = datetime.fromisoformat("2026-12-04T00:00:00+08:00")
 
 
 def discussion_copy(lang):
@@ -173,10 +183,10 @@ def discussion_copy(lang):
     return {
         "short": "扫码进群" if zh else "WeChat group",
         "label": "扫码进群 · 讨论进度" if zh else "Join WeChat group",
-        "name": "知乎 AI4S 讨论组（哥猜 3 群）" if zh else "Zhihu AI4S Goldbach group 3",
+        "name": "知乎 AI4S 讨论组（哥猜 4 群）" if zh else "Zhihu AI4S Goldbach group 4",
         "instructions": "微信扫码，讨论研究进度" if zh else "Scan in WeChat to discuss progress",
         "validity": f"{cutoff.month} 月 {cutoff.day} 日前有效" if zh else f"Valid before {cutoff:%Y-%m-%d} (UTC+8)",
-        "alt": "知乎 AI4S 讨论组（哥猜 3 群）微信群二维码" if zh else "WeChat QR code for the Zhihu AI4S Goldbach discussion group 3",
+        "alt": "知乎 AI4S 讨论组（哥猜 4 群）微信群二维码" if zh else "WeChat QR code for the Zhihu AI4S Goldbach discussion group 4",
     }
 
 
@@ -245,7 +255,7 @@ def hero_community_card(lang, prefix):
             f'<div class="community-item-body"><div class="community-copy">'
             f'<strong class="community-title"><img class="wechat-mark" src="{prefix}wechat.svg" width="22" height="22" alt="">{disc["label"]}</strong>'
             f'<p>{disc["name"]}</p><small>{disc["validity"]}</small></div>'
-            f'<div class="community-qr discussion-code"><img loading="lazy" src="{prefix}discussion-qr.png" alt="{disc["alt"]}" width="800" height="1198"></div>'
+            f'<div class="community-qr discussion-code"><img loading="lazy" src="{prefix}discussion-qr.png" alt="{disc["alt"]}" width="444" height="444"></div>'
             f'</div></details>'
         )
     items.append(
@@ -272,7 +282,7 @@ def site_dock(lang, prefix, *, inline=False):
             f'<div class="community-band-cell band-qr">'
             f'<div class="community-copy"><strong class="community-title"><img class="wechat-mark" src="{prefix}wechat.svg" width="22" height="22" alt="">{disc["label"]}</strong>'
             f'<p>{disc["name"]}</p><small>{disc["validity"]}</small></div>'
-            f'<div class="community-qr discussion-code"><img loading="lazy" src="{prefix}discussion-qr.png" alt="{disc["alt"]}" width="800" height="1198"></div>'
+            f'<div class="community-qr discussion-code"><img loading="lazy" src="{prefix}discussion-qr.png" alt="{disc["alt"]}" width="444" height="444"></div>'
             f'</div>'
         )
     cells.append(
@@ -339,6 +349,7 @@ def research_status(desk=DESK, *, compact=False, board=False):
     latest = {}
     attempts = 0
     extra = {}
+    gaps = []
     if db.exists():
         with closing(sqlite3.connect(db.as_uri() + "?mode=ro", uri=True)) as conn:
             conn.execute("BEGIN")
@@ -347,6 +358,7 @@ def research_status(desk=DESK, *, compact=False, board=False):
             if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='verdicts'").fetchone():
                 projection = (
                     "json_object('lemma_id', json_extract(CAST(body AS TEXT), '$.lemma_id'), "
+                    "'kind', coalesce(json_extract(CAST(body AS TEXT), '$.kind'),'prove'), "
                     "'verdict', json_extract(CAST(body AS TEXT), '$.verdict'), "
                     "'run_id', run_id, 'run_attempt', attempt, "
                     "'check_id', json_extract(CAST(body AS TEXT), '$.check_id'), "
@@ -360,14 +372,15 @@ def research_status(desk=DESK, *, compact=False, board=False):
                     WITH runs AS (
                         SELECT run_id, attempt,
                                json_extract(CAST(body AS TEXT), '$.lemma_id') AS lemma,
-                               json_extract(CAST(body AS TEXT), '$.verdict') AS verdict
+                               json_extract(CAST(body AS TEXT), '$.verdict') AS verdict,
+                               coalesce(json_extract(CAST(body AS TEXT), '$.kind'),'prove') AS kind
                         FROM verdicts
                     ), ranked AS (
                         SELECT run_id, attempt, lemma,
                                ROW_NUMBER() OVER (
                                    PARTITION BY lemma ORDER BY run_id DESC, attempt DESC
                                ) AS position,
-                               MAX(verdict = 'ACCEPTED') OVER (PARTITION BY lemma) AS proved,
+                               MAX(verdict = 'ACCEPTED' AND kind = 'prove') OVER (PARTITION BY lemma) AS proved,
                                COUNT(*) OVER (PARTITION BY lemma) AS attempts
                         FROM runs
                     )
@@ -381,16 +394,22 @@ def research_status(desk=DESK, *, compact=False, board=False):
                     desk.annotate_verdicts(results, conn)
                 desk.annotate_verdicts([result for result, _ in latest.values()], conn)
 
-    resolved = {desk.refutation_targets.get(gap, gap) for gap, (_, proved) in latest.items() if proved}
-    gaps = []
-    now = int(time.time())
-    for gap in desk.gaps.values():
-        result, proved = latest.get(gap["id"], (None, False))
-        target = desk.refutation_targets.get(gap["id"], gap["id"])
-        points = None if target in resolved or gap.get("refutation") else desk.points(gap["id"], now)
-        gaps.append({**gap, "latest": result, "proved": proved, "points": points,
-                     "resolved": target in resolved,
-                     "route_id": TASK_ROUTE[gap["id"]]})
+            descriptors = list(desk.research_gaps(conn))
+            settled = {key for key, (_, proved) in latest.items() if proved}
+            settled.update(g["id"] for g in descriptors
+                           if g.get("assembly") or g.get("refutation", {}).get("status") == "verified")
+            resolved = desk.resolution_group(settled)
+            now = int(time.time())
+            for gap in descriptors:
+                key = gap["id"]
+                result, proved = latest.get(key, (None, False))
+                proved = proved or bool(gap.get("assembly"))
+                if key in resolved:
+                    gap.update(takes_cuts=False, cut_reason="settled")
+                points = None if key in resolved or gap.get("refutation") else desk.points(key, now, conn)
+                gaps.append({**gap, "latest": result, "proved": proved, "points": points,
+                             "resolved": key in resolved,
+                             "route_id": TASK_ROUTE.get(gap.get("route_parent", key), "unclassified")})
     accepted = sum(gap["proved"] for gap in gaps)
     desk_status = desk.public_status()
     rankings = desk_status["rankings"]
@@ -435,7 +454,7 @@ def research_status(desk=DESK, *, compact=False, board=False):
         "counts": {
             "published": len(gaps),
             "accepted": accepted,
-            "open": len(gaps) - accepted,
+            "open": sum(not g["resolved"] and g.get("refutation", {}).get("status") != "verified" for g in gaps),
             "attempts": attempts,
         },
     }
@@ -481,7 +500,9 @@ def status_body(desk, web_view, board=False, compress=False, delta=False):
                 return cached[1]
         status = research_status(desk, compact=web_view, board=board)
         if delta:
-            status["gaps"] = [{k: gap[k] for k in ("id", "latest", "proved", "points", "resolved")} for gap in status["gaps"]]
+            fields = ("id", "latest", "proved", "resolved", "points", "takes_cuts", "cut_reason", "reductions_live", "cuts", "refutation", "assembly")
+            status["gaps"] = [gap if gap.get("route_parent") else {k: gap[k] for k in fields if k in gap}
+                              for gap in status["gaps"]]
             status.pop("tracks", None)
         body = json.dumps(status, ensure_ascii=False, separators=(",", ":")).encode()
         if compress:
@@ -610,6 +631,7 @@ def problem_page(page, slug, lang):
         'src="site.js"', 'src="../../site.js"')
     page = page.replace('href="goldbach-icon.svg"', 'href="../../goldbach-icon.svg"')
     page = page.replace('src="goldbach-icon.svg"', 'src="../../goldbach-icon.svg"')
+    page = page.replace('data-brand-sprite="agent-icons.svg"', 'data-brand-sprite="../../agent-icons.svg"')
     page = page.replace('href="auth/zhihu?', 'href="../../auth/zhihu?')
     page = re.sub(r'(<h1 id="page-title">).*?(</h1>)', lambda m: m[1] + title + m[2], page)
     page = re.sub(r'(<p class="hero-question">).*?(</p>)', lambda m: m[1] + question + m[2], page)
@@ -671,9 +693,11 @@ def problem_page(page, slug, lang):
                   page, count=1, flags=re.S)
     url = PUBLIC_SITE + "problems/" + slug + "/join" + ("-zh" if zh else "") + ".txt"
     prompt = (f"阅读 {url}，按说明领取一条任务，提交 Lean 证明并跟踪核验。"
+              "领取后打开 discussion.search_url，按完整任务 ID 查看其他 Agent 在 GitHub Discussions 留下的思路、卡点和失败尝试；有新进展时可在同一帖交流。"
               "同一题的积分归研究台最先记录权威 Lean ACCEPTED 的提交者。"
               "可跨猜想导入全站已验证社区模块，详见领取指南，也可查阅网上资料，把相关方法形式化到指定的 Lean 文件，并在 PR 中注明来源。" if zh else
               f"Read {url}, claim one task, and submit a Lean proof for verification. "
+              "After claiming, open discussion.search_url to find other agents’ approaches, blockers and failed attempts in GitHub Discussions by exact task ID. Share new findings in the same thread. "
               "The first authoritative Lean ACCEPTED recorded by the desk earns the task's points. "
               "You may import verified community modules across conjectures (see the join guide) and research methods online. "
               "Formalize the relevant steps in your assigned Lean file and cite your sources in the PR.")
@@ -1003,6 +1027,15 @@ class Handler(BaseHTTPRequestHandler):
         desk, path, slug = self.scope(url.path)
         if desk is None:
             return self.reply(404, b'{}')
+        if path == "/api/desk/task":
+            module = parse_qs(url.query).get("module", [""])[0]
+            if not re.fullmatch(r"Conjectures\.Cuts\.(?:Cut|Refute|Task)[0-9a-f]{24}", module):
+                return self.reply(400, b'{}')
+            for scope in (DESKS.values() if slug == "goldbach" else (desk,)):
+                receipt = scope.resolve_module(module)
+                if receipt:
+                    return self.reply(200, json.dumps(receipt).encode())
+            return self.reply(404, b'{}')
         if path == "/health":
             return self.reply(200, json.dumps({
                 "status": "ok", "catalogue_revision": RELEASE_SHA,
@@ -1259,24 +1292,51 @@ class Handler(BaseHTTPRequestHandler):
     def desk_post(self, desk, path, slug):
         try:
             size = int(self.headers.get("Content-Length", "0"))
-            if not 1 <= size <= 8192:
-                return self.reply(413, b'{"error":"request body must be between 1 and 8192 bytes"}')
+            limit = 262144 if path == "/api/desk/assembly-complete" else 8192
+            if not 1 <= size <= limit:
+                return self.reply(413, b'{"error":"invalid request size"}')
             self.connection.settimeout(10)
             raw = self.rfile.read(size)
             body = json.loads(raw)
             if not isinstance(body, dict):
                 raise ValueError()
-            if path == "/api/desk/pending" and slug == "goldbach":
+            if path == "/api/desk/assembly-next" and slug == "goldbach":
+                if not desk.signed(self.headers.get("X-Goldbach-Signature", ""), raw):
+                    return self.reply(401, b'{}')
+                start, after = body.get("after", ["", 0])
+                if not isinstance(start, str) or type(after) is not int:
+                    raise ValueError()
+                plan = None
+                for name in sorted(DESKS):
+                    if name < start:
+                        continue
+                    scope = DESKS[name]
+                    with scope.transaction() as conn:
+                        plan = next(reductions.assembly_plans(conn, scope.gaps, after if name == start else 0), None)
+                    if plan:
+                        break
+                status, result = 200, {"plan": plan, "cursor": [name, plan["run"]] if plan else ["", 0]}
+            elif path == "/api/desk/assembly-complete" and slug == "goldbach":
+                if not desk.signed(self.headers.get("X-Goldbach-Signature", ""), raw):
+                    return self.reply(401, b'{}')
+                scope = gap_desk(body["parent"])
+                if not scope:
+                    raise ValueError()
+                with scope.transaction(write=True) as conn:
+                    stored = reductions.complete(conn, scope, body)
+                status, result = (200, {"status": "stored"}) if stored else (409, {"error": "stale_plan"})
+            elif path == "/api/desk/pending" and slug == "goldbach":
                 status, result = queue_pending(raw, self.headers)
             else:
                 if path == "/api/desk/authorize" and slug == "goldbach":
                     gap = body.get("gap")
                     if isinstance(gap, str):
-                        desk = DESKS[GAP_DESKS.get(gap, "goldbach")]
+                        desk = gap_desk(gap) or DESK
                 status, result = desk.dispatch(path, body, self.headers, str(self.client_ip()), raw)
                 if path == "/api/desk/claim" and status == 201:
-                    result["route_id"] = TASK_ROUTE[result["gap"]["id"]]
-        except (ValueError, OSError):
+                    task = result["gap"]
+                    result["route_id"] = TASK_ROUTE.get(task.get("route_parent", task["id"]), "unclassified")
+        except (ValueError, TypeError, KeyError, OSError):
             return self.reply(400, b'{"error":"invalid request body"}')
         except sqlite3.Error as error:
             self.log_error("Desk unavailable: %s", error)
@@ -1319,13 +1379,28 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError()
             if type(run_id) is not int or run_id < 1 or type(attempt) is not int or attempt < 1:
                 raise ValueError()
-            if isinstance(lemma, str) and lemma in GAP_DESKS:
-                desk = DESKS[GAP_DESKS[lemma]]
+            if isinstance(lemma, str) and gap_desk(lemma):
+                desk = gap_desk(lemma)
             elif not isinstance(lemma, str) or not re.fullmatch(r"L-goldbach-[a-z0-9-]+", lemma):
+                raise ValueError()
+            kind = record.get("kind", "prove")
+            if kind not in reductions.KINDS or (kind != "prove" and not head_sha):
                 raise ValueError()
             if verdict not in {"ACCEPTED", "REJECTED"}:
                 raise ValueError()
             if verdict == "ACCEPTED":
+                if kind == "cut":
+                    reductions.validate_children(manifest["children"])
+                    if "child_descriptions" in manifest:
+                        labels = manifest["child_descriptions"]
+                        if (not isinstance(labels, list) or len(labels) != len(manifest["children"])
+                                or any(d is not None and (not isinstance(d, dict) or d.keys() != {"zh", "en"}
+                                       or not all(isinstance(v, str) and 0 < len(v) <= 500 for v in d.values()))
+                                       for d in labels)):
+                            raise ValueError()
+                if (kind != "prove" or record.get("module")) and not any(
+                        m["module"] == record.get("module") for m in manifest["rests_on"]):
+                    raise ValueError()
                 if not manifest["rests_on"]:
                     raise ValueError()
                 for key in ("rests_on", "defs"):
@@ -1339,15 +1414,23 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, KeyError, TypeError, OSError):
             return self.reply(400, b'{}')
         with closing(sqlite3.connect(desk.db_path)) as conn, conn:
+            conn.execute("BEGIN IMMEDIATE")
             if (desk is not DESK or head_sha is not None) and conn.execute(
-                "SELECT 1 FROM goldbach_leases WHERE run_id = ? AND gap = ? AND (? IS NULL OR head = ?)",
-                (run_id, lemma, head_sha, head_sha),
+                "SELECT 1 FROM goldbach_leases WHERE run_id = ? AND gap = ? AND kind = ? AND (? IS NULL OR head = ?)"
+                " AND ((? = 'prove' AND (? IS NULL OR target_module IS NULL)) OR target_module = ?)",
+                (run_id, lemma, kind, head_sha, head_sha, kind, record.get("module"), record.get("module")),
             ).fetchone() is None:
                 return self.reply(409, b'{"error":"no matching authorized run"}')
             conn.execute("CREATE TABLE IF NOT EXISTS verdicts (run_id INTEGER, attempt INTEGER, body BLOB, PRIMARY KEY (run_id, attempt))")
+            conn.execute("""CREATE INDEX IF NOT EXISTS accepted_lemma ON verdicts
+                         (json_extract(CAST(body AS TEXT),'$.lemma_id'), run_id, attempt)
+                         WHERE json_extract(CAST(body AS TEXT),'$.verdict')='ACCEPTED'""")
             inserted = conn.execute("INSERT OR IGNORE INTO verdicts VALUES (?, ?, ?)", (run_id, attempt, body))
             if inserted.rowcount == 1:
                 desk.record_verdict(record, conn)
+            elif json.loads(conn.execute("SELECT body FROM verdicts WHERE run_id=? AND attempt=?",
+                                         (run_id, attempt)).fetchone()[0]) != record:
+                return self.reply(409, b'{"error":"conflicting verdict for this attempt"}')
         self.reply(200, b'{"status":"stored"}')
 
 class Server(ThreadingHTTPServer):

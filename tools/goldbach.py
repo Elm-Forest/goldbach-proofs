@@ -3,6 +3,7 @@
 
 import argparse
 import gzip
+import hashlib
 import json
 import os
 import re
@@ -379,7 +380,48 @@ def read_reviews(number, limit):
     print(json.dumps({"pr": number, "reviews": entries[-limit:]}, ensure_ascii=False, separators=(",", ":")))
 
 
-def claim(path, requested, problem):
+def matching_task(gap, expected, kind, problem):
+    ident, statement, module = (gap.get(key, "") for key in ("id", "statement", "module"))
+    if not GAP_ID.fullmatch(ident) or not statement or not isinstance(module, str):
+        return False
+    if expected:
+        if any(gap.get(key) != expected.get(key) for key in ("statement", "imports")):
+            return False
+        ordinary_module = expected["module"]
+    else:
+        key = hashlib.sha256((problem + "\n" + statement).encode()).hexdigest()[:24]
+        if ident != f"L-{problem}-cut-{key}" or not all(re.fullmatch(
+                r"(?:PEqualNP|Conjectures)(?:\.[A-Za-z][A-Za-z0-9_]*)+", name)
+                for name in gap.get("imports", [])):
+            return False
+        ordinary_module = "Conjectures.Cuts.Task" + key
+    if kind == "prove":
+        if module != ordinary_module or (expected and gap.get("file") != expected.get("file")):
+            return False
+    elif not re.fullmatch(r"Conjectures\.Cuts\." + kind.title() + r"[0-9a-f]{24}", module):
+        return False
+    return gap.get("file") == "lean/" + module.replace(".", "/") + ".lean"
+
+
+def write_template(gap, kind):
+    imports = ["Mathlib", *gap.get("imports", [])]
+    header = "".join(f"import {name}\n" for name in imports)
+    statement = "(" + gap["statement"] + ")"
+    binders = ""
+    if kind == "cut":
+        header += "\n-- Replace both sample premises with independent closed propositions.\n"
+        header += "-- Optional bilingual descriptions, one pair per premise:\n"
+        header += "-- For example, use child 1 zh: and child 1 en: in separate line comments.\n"
+        binders = " (h₁ : True) (h₂ : True)"
+    elif kind == "refute":
+        statement = "¬ " + statement
+    file = Path(gap["file"])
+    file.parent.mkdir(parents=True, exist_ok=True)
+    with file.open("x", encoding="utf-8") as stream:
+        stream.write(f"{header}\ntheorem {gap['module']}{binders} : {statement} := by\n  sorry\n")
+
+
+def claim(path, requested, problem, kind="prove"):
     if path.exists():
         raise SystemExit("This checkout already has a task. Finish it or use a fresh checkout.")
     if command("git", "status", "--porcelain", "--untracked-files=all"):
@@ -388,7 +430,8 @@ def claim(path, requested, problem):
     if problem not in (None, "goldbach") or (requested and not requested.startswith("L-goldbach-")):
         problems = json.loads(command("git", "show", f"{base}:research/problems.json"))
         if problem is None:
-            problem = next((slug for slug, config in problems.items()
+            generated = re.fullmatch(r"L-([a-z]+(?:-[a-z]+)*)-cut-[0-9a-f]{24}", requested or "")
+            problem = generated[1] if generated else next((slug for slug, config in problems.items()
                             if any(task["id"] == requested for task in config["gaps"])), "goldbach")
         if problem != "goldbach" and problem not in problems:
             raise SystemExit("Unknown research problem.")
@@ -396,35 +439,37 @@ def claim(path, requested, problem):
     registry = (json.loads(command("git", "show", f"{base}:research/gaps.json"))
                 if problem == "goldbach" else problems[problem])
     handle = authenticated_login()
-    request = {"handle": handle}
+    request = {"handle": handle, "kind": kind}
     if requested:
         request["gap"] = requested
     response = desk("claim", request, problem=problem)
     gap = response["gap"]
     lease = response["lease"]
     expected = next((item for item in registry["gaps"] if item["id"] == gap["id"]), None)
-    fields = ("id", "file", "module", "statement", "imports")
-    if not expected or not GAP_ID.fullmatch(gap["id"]) or any(
-        gap.get(field) != expected.get(field) for field in fields
-    ):
+    if (response.get("kind", "prove") != kind or (requested and requested != gap["id"])
+            or not matching_task(gap, expected, kind, problem)):
         desk("release", {"reason": "superseded"}, lease["token"], problem=problem)
         raise SystemExit("The desk and this checkout disagree. Clone the current default branch and retry.")
 
     branch = f"goldbach/{gap['id']}/{secrets.token_hex(4)}"
     state = {
-        "base": base, "branch": branch, "handle": handle, "gap": expected,
+        "base": base, "branch": branch, "handle": handle, "gap": gap, "kind": kind,
         "token": lease["token"], "problem": problem, "route_id": response.get("route_id"),
     }
     try:
         save(path, state)
         subprocess.run(["git", "switch", "-c", branch], check=True)
+        if kind != "prove" or expected is None:
+            write_template(gap, kind)
     except (OSError, subprocess.CalledProcessError):
         desk("release", {"reason": "other"}, lease["token"], problem=problem)
         path.unlink(missing_ok=True)
         raise
     print(json.dumps({
-        "gap": expected,
+        "gap": gap,
+        "kind": kind,
         "route_id": state["route_id"],
+        "discussion": response.get("discussion"),
         "branch": branch,
         "handle": handle,
         "expires_at": lease["expires_at"],
@@ -456,7 +501,8 @@ def open_pr(state):
         if pr["headRepositoryOwner"]["login"].casefold() == handle.casefold():
             print(pr["url"])
             return
-    title = f"[{problem}/{route}] Prove {gap}"
+    kind = state.get("kind", "prove")
+    title = f"[{problem}/{route}] {kind.title()} {gap}"
     body = f"Problem: {problem}\nRoute: {route}\nLemma: {gap}\nFile: {state['gap']['file']}\n"
     with tempfile.TemporaryDirectory() as folder:
         path = Path(folder) / "proof-pr.md"
@@ -505,7 +551,8 @@ def submit(path, state, number, agent=None):
         if refusal.reason != "lease_completed" or state.get("requested", {}).get("pr") != number:
             raise
         # A corrected proof uses a new lease for the same gap and a new head on the same PR.
-        current = desk("claim", {"handle": state["handle"], "gap": state["gap"]["id"]}, problem=problem)
+        current = desk("claim", {"handle": state["handle"], "gap": state["gap"]["id"],
+                                 "kind": state.get("kind", "prove"), "retry_pr": number}, problem=problem)
         token = current["lease"]["token"]
         if any(current["gap"].get(k) != state["gap"].get(k) for k in ("id", "module", "file", "statement", "imports")):
             desk("release", {"reason": "superseded"}, token, problem=problem)
@@ -531,6 +578,7 @@ def main():
     modes = parser.add_subparsers(dest="action", required=True)
     request = modes.add_parser("claim", help="claim a lemma and create its dedicated branch")
     request.add_argument("gap", nargs="?")
+    request.add_argument("--kind", choices=("prove", "cut", "refute"), default="prove")
     request.add_argument("--problem", help="problem slug, e.g. no-three-in-line")
     listing = modes.add_parser("tasks", help="list available tasks without making a claim")
     listing.add_argument("--problem", default="goldbach", help="problem slug, e.g. twin-primes")
@@ -605,7 +653,7 @@ def main():
     if args.action == "claim":
         if args.gap and not GAP_ID.fullmatch(args.gap):
             parser.error("invalid Goldbach lemma ID")
-        claim(path, args.gap, args.problem)
+        claim(path, args.gap, args.problem, args.kind)
         return
     if not path.is_file():
         parser.error("no lease in this checkout; run claim first")

@@ -10,13 +10,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 from deploy.desk import (
-    Desk, HARNESS_NAMES, MODEL_ALIASES_FILE, MODEL_CATALOG, MODEL_EXACT_ALIASES,
-    MODEL_NAME_ALIASES, agent_metadata, model_brand_icon,
-    model_catalog_payload, model_provider, model_ranking_name, provider_brand_icon,
+    Desk, HARNESS_ICONS, HARNESS_NAMES, MODEL_ALIASES_FILE, MODEL_CATALOG,
+    MODEL_EXACT_ALIASES, MODEL_NAME_ALIASES, MODEL_REGISTRY, agent_metadata,
+    harness_brand_icon, model_brand_icon, model_catalog_payload,
+    model_provider, model_ranking_name, provider_brand_icon,
 )
 from deploy import test_desk as desk_tests
 from deploy.test_desk import GAPS, START
-from tools import goldbach, sync_models
+from tools import build_icons, goldbach, sync_models
 
 
 class AttributionTests(unittest.TestCase):
@@ -50,25 +51,59 @@ class AttributionTests(unittest.TestCase):
                 self.assertEqual(model_provider(name), provider)
 
     def test_brand_icon_single_source_of_truth(self):
-        self.assertEqual(model_brand_icon("99bee5af-9ad7-44ea-afea-3d9db1bf1f2d/glm-5.4"), 9)
-        self.assertEqual(model_brand_icon("hy4std"), 18)
-        self.assertEqual(model_brand_icon("hy4-flash-free"), 18)
-        self.assertEqual(model_brand_icon("big fat fish v4.1-flash"), 3)
-        self.assertIsNone(model_brand_icon("nex-n2.6"))
-        self.assertEqual(model_brand_icon("gemini-2.5-pro"), 2)
-        self.assertEqual(provider_brand_icon("Google"), 21)
-        self.assertEqual(model_brand_icon("kimi-k3"), 8)
-        self.assertEqual(provider_brand_icon("Moonshot AI"), 33)
+        self.assertEqual(model_brand_icon("99bee5af-9ad7-44ea-afea-3d9db1bf1f2d/glm-5.4"), "zhipu")
+        self.assertEqual(model_brand_icon("hy4std"), "hunyuan")
+        self.assertEqual(model_brand_icon("hy4-flash-free"), "hunyuan")
+        self.assertEqual(model_brand_icon("big fat fish v4.1-flash"), "deepseek")
+        self.assertEqual(model_brand_icon("nex-n2.6"), "nex-agi")
+        self.assertEqual(provider_brand_icon("Nex AGI"), "nex-agi")
+        self.assertEqual(model_brand_icon("gemini-2.5-pro"), "gemini")
+        self.assertEqual(provider_brand_icon("Google"), "google")
+        self.assertEqual(model_brand_icon("kimi-k3"), "kimi")
+        self.assertEqual(provider_brand_icon("Moonshot AI"), "moonshot")
+        self.assertEqual(harness_brand_icon("minimax-code"), "minimax")
+        self.assertEqual(harness_brand_icon("antigravity"), "antigravity")
+        self.assertEqual(harness_brand_icon("zcode"), "zcode")
+        self.assertEqual(harness_brand_icon("other"), "tool-other")
         self.assertIsNone(model_brand_icon("custom-model"))
         self.assertIsNone(model_brand_icon("aws/custom-model"))
         root = Path(__file__).resolve().parents[1]
-        self.assertNotIn("agentBrandRules", (root / "deploy/site.js").read_text())
+        site_js = (root / "deploy/site.js").read_text()
+        self.assertNotIn("agentBrandRules", site_js)
+        self.assertNotIn("harnessBrandIcons", site_js)
+
+    def test_svg_sprite_integrity_and_complete_symbol_coverage(self):
+        import xml.etree.ElementTree as ET
+        root = Path(__file__).resolve().parents[1]
+        sprite_path = root / "deploy/agent-icons.svg"
+        self.assertTrue(sprite_path.is_file())
+        compiled, keys = build_icons.compile_sprite()
+        self.assertEqual(sprite_path.read_text(encoding="utf-8"), compiled)
+        # Strict XML parse check prevents duplicate attributes (e.g. duplicate xmlns) from breaking DOMParser.
+        parsed = ET.fromstring(compiled)
+        self.assertTrue(parsed.tag.endswith("}svg"))
+        symbol_keys = set(keys)
+        # Every icon key referenced by MODEL_REGISTRY, HARNESS_ICONS, and fallbacks must exist.
+        referenced = {"provider-unknown", "tool-other"}
+        for spec in MODEL_REGISTRY.values():
+            if spec.get("icon"):
+                referenced.add(spec["icon"])
+            for _, fam_icon in spec.get("family_icons", ()):
+                referenced.add(fam_icon)
+        referenced.update(HARNESS_ICONS.values())
+        self.assertEqual(referenced - symbol_keys, set())
+        # All XML IDs inside the compiled sprite must be unique and every url(#...) must resolve.
+        all_ids = re.findall(r'\bid="([^"]+)"', compiled)
+        self.assertEqual(len(all_ids), len(set(all_ids)))
+        id_set = set(all_ids)
+        for ref in re.findall(r'url\(#([^)]+)\)', compiled):
+            self.assertIn(ref, id_set)
 
     def test_model_catalog_payload_and_filtering(self):
         observed = [
-            {"name": "glm-5.4", "provider": "Z.ai", "accepted": 3, "points": 12, "icon": 9},
-            {"name": "gemini-neon", "provider": "Google", "accepted": 2, "points": 9, "icon": 2},
-            {"name": "tencent hunyuan hy", "provider": "Tencent", "accepted": 1, "points": 3, "icon": 18},
+            {"name": "glm-5.4", "provider": "Z.ai", "accepted": 3, "points": 12, "icon": "zhipu"},
+            {"name": "gemini-neon", "provider": "Google", "accepted": 2, "points": 9, "icon": "gemini"},
+            {"name": "tencent hunyuan hy", "provider": "Tencent", "accepted": 1, "points": 3, "icon": "hunyuan"},
             {"name": "mystery-x", "accepted": 1, "points": 2},
         ]
         payload = model_catalog_payload(observed, query="glm")
@@ -124,7 +159,7 @@ class AttributionTests(unittest.TestCase):
             "k3.1-pro": "kimi-k3.1-pro",
         }.items():
             self.assertEqual(model_ranking_name(alias), canonical)
-        self.assertEqual(model_brand_icon("k3.1-pro"), 8)
+        self.assertEqual(model_brand_icon("k3.1-pro"), "kimi")
 
     def setUp(self):
         self.helper = desk_tests.DeskTests()
@@ -166,8 +201,8 @@ class AttributionTests(unittest.TestCase):
             with patch("deploy.desk.HISTORICAL_HARNESSES", {(101, head): "minimax-code"}):
                 ranking = self.desk.agent_rankings(conn, START + 10)
             self.assertEqual(ranking["harnesses"], [
-                {"name": "other", "accepted": 2, "points": 10},
-                {"name": "minimax-code", "accepted": 1, "points": 5},
+                {"name": "other", "accepted": 2, "points": 10, "icon": "tool-other"},
+                {"name": "minimax-code", "accepted": 1, "points": 5, "icon": "minimax"},
             ])
             self.assertEqual(ranking["models"], [{"name": "model-a", "accepted": 3, "points": 15}])
             self.assertEqual(conn.execute("SELECT DISTINCT harness FROM goldbach_leases").fetchone()[0], "other")
@@ -222,13 +257,15 @@ class AttributionTests(unittest.TestCase):
                         'ACCEPTED','6.2 astrahigh','cline')""", (START+99,))
         ranks = self.helper.status(now=START+100)['agent_rankings']
         self.assertEqual(ranks['models'], [
-            {'name': 'gpt-6.2-astra', 'accepted': 26, 'points': 26, 'provider': 'OpenAI', 'icon': 0},
-            {'name': 'gpt-6.1-astra', 'accepted': 1, 'points': 1, 'provider': 'OpenAI', 'icon': 0},
-            {'name': 'gpt-6.2-sol', 'accepted': 1, 'points': 1, 'provider': 'OpenAI', 'icon': 0},
+            {'name': 'gpt-6.2-astra', 'accepted': 26, 'points': 26, 'provider': 'OpenAI', 'icon': 'openai'},
+            {'name': 'gpt-6.1-astra', 'accepted': 1, 'points': 1, 'provider': 'OpenAI', 'icon': 'openai'},
+            {'name': 'gpt-6.2-sol', 'accepted': 1, 'points': 1, 'provider': 'OpenAI', 'icon': 'openai'},
         ])
         self.assertEqual(ranks['harnesses'], [
-            {'name': 'codex', 'accepted': 17, 'points': 17}, {'name': 'kimi-code', 'accepted': 9, 'points': 9},
-            {'name': 'other', 'accepted': 1, 'points': 1}, {'name': 'qwen-code', 'accepted': 1, 'points': 1},
+            {'name': 'codex', 'accepted': 17, 'points': 17, 'icon': 'codex'},
+            {'name': 'kimi-code', 'accepted': 9, 'points': 9, 'icon': 'kimi'},
+            {'name': 'other', 'accepted': 1, 'points': 1, 'icon': 'tool-other'},
+            {'name': 'qwen-code', 'accepted': 1, 'points': 1, 'icon': 'qwen'},
         ])
         self.assertEqual(ranks['proofs'], 28)
         records = [{'run_id': 18, 'lemma_id': 'lemma-18'}]
@@ -249,10 +286,10 @@ class AttributionTests(unittest.TestCase):
                 """, (str(run), gap, run, run, START + run, model, pts))
         ranks = self.helper.status(now=START + 10)['agent_rankings']
         self.assertEqual(ranks['models'], [
-            {'name': 'deepseek-v4.1-flash', 'accepted': 2, 'points': 114, 'provider': 'DeepSeek', 'icon': 3},
+            {'name': 'deepseek-v4.1-flash', 'accepted': 2, 'points': 114, 'provider': 'DeepSeek', 'icon': 'deepseek'},
         ])
         self.assertEqual(ranks['providers'], [
-            {'name': 'DeepSeek', 'accepted': 2, 'points': 114, 'icon': 3, 'models': ranks['models']},
+            {'name': 'DeepSeek', 'accepted': 2, 'points': 114, 'icon': 'deepseek', 'models': ranks['models']},
         ])
         records = [{'run_id': 2, 'lemma_id': 'lemma-2'}]
         with self.desk.transaction() as conn:
@@ -308,7 +345,7 @@ class AttributionTests(unittest.TestCase):
         self.assertEqual([r['agent']['model'] for r in records], ['model-a-2026', 'model-b', 'unknown'])
         self.assertEqual(records[0]['agent']['source'], 'self_reported')
         ranks = self.helper.status(now=START+40)['agent_rankings']
-        self.assertEqual({k: v for k, v in ranks.items() if k != 'providers'}, {'models': [{'name': 'model-b', 'accepted': 1, 'points': 1}], 'harnesses': [{'name': 'codex', 'accepted': 1, 'points': 1}], 'proofs': 1})
+        self.assertEqual({k: v for k, v in ranks.items() if k != 'providers'}, {'models': [{'name': 'model-b', 'accepted': 1, 'points': 1}], 'harnesses': [{'name': 'codex', 'accepted': 1, 'points': 1, 'icon': 'codex'}], 'proofs': 1})
 
     def test_first_acceptance_unknown_history_and_separate_models(self):
         with self.desk.transaction(write=True) as conn:
@@ -328,15 +365,18 @@ class AttributionTests(unittest.TestCase):
         self.assertEqual(ranks['proofs'], 4)
         self.assertEqual(status['rankings']['proofs'], 5)
         self.assertEqual(ranks['models'], [
-            {'name': 'gpt-6', 'accepted': 1, 'points': 1, 'provider': 'OpenAI', 'icon': 0},
-            {'name': 'gpt-6.2-sol', 'accepted': 1, 'points': 1, 'provider': 'OpenAI', 'icon': 0},
+            {'name': 'gpt-6', 'accepted': 1, 'points': 1, 'provider': 'OpenAI', 'icon': 'openai'},
+            {'name': 'gpt-6.2-sol', 'accepted': 1, 'points': 1, 'provider': 'OpenAI', 'icon': 'openai'},
             {'name': 'model-c', 'accepted': 1, 'points': 1},
         ])
         self.assertEqual(ranks['providers'], [
-            {'name': 'OpenAI', 'accepted': 2, 'points': 2, 'icon': 0, 'models': ranks['models'][:2]},
+            {'name': 'OpenAI', 'accepted': 2, 'points': 2, 'icon': 'openai', 'models': ranks['models'][:2]},
             {'name': 'unknown', 'accepted': 1, 'points': 1, 'models': ranks['models'][2:]},
         ])
-        self.assertEqual(ranks['harnesses'], [{'name': 'codex', 'accepted': 2, 'points': 2}, {'name': 'cursor', 'accepted': 1, 'points': 1}])
+        self.assertEqual(ranks['harnesses'], [
+            {'name': 'codex', 'accepted': 2, 'points': 2, 'icon': 'codex'},
+            {'name': 'cursor', 'accepted': 1, 'points': 1, 'icon': 'cursor'},
+        ])
         self.assertNotIn('ip_key', json.dumps(status))
         self.assertNotIn('token_hash', json.dumps(status))
 
