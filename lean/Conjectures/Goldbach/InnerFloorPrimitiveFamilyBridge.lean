@@ -80,10 +80,11 @@ theorem primitiveEnergy_le_analyticFamily (A : ℕ) (y h : ℝ) :
       have hsum : (∑ χ∈(primitiveCharacters 1).filter (fun χ => χ ≠ 1),g 1 χ) =
           ∑ χ∈(primitiveCharacters 1).erase 1,g 1 χ :=
         congrArg (fun S : Finset (DirichletCharacter ℂ 1) => ∑ χ∈S,g 1 χ) he
-      calc
-        _ = (∑ χ∈(primitiveCharacters 1).erase 1,g 1 χ)+P := by
-          exact (sum_erase_add _ _ hmem).symm
-        _ ≤ _ := add_le_add hsum.symm.le le_rfl
+      have hEq : (∑ χ∈primitiveCharacters 1,g 1 χ) =
+          (∑ χ∈(primitiveCharacters 1).filter (fun χ => χ ≠ 1),g 1 χ)+P :=
+        (sum_erase_add _ _ hmem).symm.trans
+          (congrArg (fun z : ℝ => z+P) hsum.symm)
+      exact hEq.le
     · have he : (primitiveCharacters q).filter (fun χ => χ ≠ 1) =
           primitiveCharacters q := by
         ext χ
