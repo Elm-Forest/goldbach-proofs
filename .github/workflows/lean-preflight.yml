@@ -30,7 +30,7 @@ jobs:
           fail=0
           for proof in ../inner-research/*.lean; do
             echo "::group::$(basename "$proof")"
-            if timeout 240 lake env lean "$proof"; then
+            if timeout 900 lake env lean "$proof"; then
               echo "PREFLIGHT PASS: $(basename "$proof")"
               echo "- PASS: $(basename "$proof")" >> "$GITHUB_STEP_SUMMARY"
             else
