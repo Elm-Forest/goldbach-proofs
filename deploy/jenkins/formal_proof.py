@@ -53,14 +53,16 @@ def judge(db, app, job_id, work, base, toolchain, ownership_check, *, desk_url, 
             or comment["user"]["login"].casefold() != handle.casefold()
             or comment["body"].strip() != f"/goldbach-check {gap}"):
         raise StaleDelivery("The PR author did not authorize this proof and gap")
+    kind = (work / "task.kind").read_text().strip()
+    module = (work / "pr.module").read_text().strip()
     authorize(desk_url, secret, pr=pr, head=head, handle=handle, gap=gap,
-              run_id=run_id, statement=statement)
+              run_id=run_id, statement=statement, kind=kind, module=module)
     try:
         manifest = verify(file, work, base / "lean", toolchain, ownership_check)
     except ProofRejected:
         verdict, manifest = "REJECTED", None
     else:
         verdict = "ACCEPTED"
-    enqueue(db, {"lemma_id": gap, "head_sha": head, "verdict": verdict, "manifest": manifest,
-                 "run_id": run_id, "run_attempt": 1})
+    enqueue(db, {"lemma_id": gap, "kind": kind, "module": module, "head_sha": head,
+                 "verdict": verdict, "manifest": manifest, "run_id": run_id, "run_attempt": 1})
     return run_id

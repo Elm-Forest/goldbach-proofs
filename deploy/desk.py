@@ -7,8 +7,14 @@ import secrets
 import sqlite3
 import time
 from collections import Counter
-from contextlib import closing, contextmanager
+from contextlib import closing, contextmanager, nullcontext
 from pathlib import Path
+from urllib.parse import urlencode
+
+if __package__:
+    from . import reductions
+else:
+    import reductions
 
 NO_RESEARCH_DEADLINE = 253402300799  # Keep the existing integer lease protocol.
 SUBMISSION_SECONDS = 12 * 60 * 60
@@ -380,141 +386,145 @@ def model_ranking_name(value):
 # Reference: https://openrouter.ai/models and https://models.dev/
 MODEL_REGISTRY = {
     "OpenAI": {
-        "icon": 0,
+        "icon": "openai",
         "orgs": ("openai",),
         "families": (r"gpt", r"chatgpt", r"o[134](?=$|[._:-]|-mini|-pro|-preview)"),
     },
     "Anthropic": {
-        "icon": 1,
+        "icon": "claude",
         "orgs": ("anthropic",),
         "families": (r"claude",),
     },
     "Google": {
-        "icon": 21,
+        "icon": "google",
         "orgs": ("google",),
         "families": (r"gemini", r"gemma", r"palm"),
-        "family_icons": ((r"gemini", 2), (r"gemma", 20)),
+        "family_icons": ((r"gemini", "gemini"), (r"gemma", "gemma")),
     },
     "MiniMax": {
-        "icon": 12,
+        "icon": "minimax",
         "orgs": ("minimax", "minimaxai"),
         "families": (r"minimax", r"abab"),
     },
     "DeepSeek": {
-        "icon": 3,
+        "icon": "deepseek",
         "orgs": ("deepseek", "deepseek-ai"),
         "families": (r"deepseek",),
     },
     "Alibaba": {
-        "icon": 28,
+        "icon": "alibaba",
         "orgs": ("alibaba", "qwen", "tongyi"),
         "families": (r"qwen", r"qwq", r"qvq", r"tongyi"),
-        "family_icons": ((r"qwen|qwq|qvq|tongyi", 4),),
+        "family_icons": ((r"qwen|qwq|qvq|tongyi", "qwen"),),
     },
     "Moonshot AI": {
-        "icon": 33,
+        "icon": "moonshot",
         "orgs": ("moonshot", "moonshotai"),
         "families": (r"kimi", r"moonshot"),
-        "family_icons": ((r"kimi", 8),),
+        "family_icons": ((r"kimi", "kimi"),),
     },
     "Meta": {
-        "icon": 6,
+        "icon": "meta",
         "orgs": ("meta", "meta-llama"),
         "families": (r"llama",),
     },
     "Mistral AI": {
-        "icon": 7,
+        "icon": "mistral",
         "orgs": ("mistral", "mistralai"),
         "families": (r"mistral", r"mixtral", r"codestral", r"devstral", r"magistral", r"ministral", r"pixtral", r"voxtral"),
     },
     "xAI": {
-        "icon": 5,
+        "icon": "xai",
         "orgs": ("xai", "x-ai"),
         "families": (r"grok",),
+        "family_icons": ((r"grok", "grok"),),
     },
     "Z.ai": {
-        "icon": 9,
+        "icon": "zhipu",
         "orgs": ("zai", "z-ai", "zhipu", "zhipuai", "thudm"),
         "families": (r"glm", r"chatglm"),
     },
     "ByteDance": {
-        "icon": 10,
+        "icon": "bytedance",
         "orgs": ("bytedance", "bytedance-seed"),
         "families": (r"doubao", r"seed(?=[ -]?[0-9]|-oss|-coder|-pro|-thinking)"),
+        "family_icons": ((r"doubao|seed", "doubao"),),
     },
     "Baidu": {
-        "icon": 11,
+        "icon": "baidu",
         "orgs": ("baidu",),
         "families": (r"ernie", r"wenxin"),
+        "family_icons": ((r"ernie|wenxin", "wenxin"),),
     },
     "Tencent": {
-        "icon": 29,
+        "icon": "tencent",
         "orgs": ("tencent",),
         "families": (r"hunyuan", r"hy(?=[0-9])"),
-        "family_icons": ((r"hunyuan|hy(?=[0-9])", 18),),
+        "family_icons": ((r"hunyuan|hy(?=[0-9])", "hunyuan"),),
     },
     "StepFun": {
-        "icon": 19,
+        "icon": "stepfun",
         "orgs": ("stepfun", "step-fun"),
         "families": (r"step(?=[ -]?[0-9])",),
     },
     "Microsoft": {
-        "icon": 17,
+        "icon": "microsoft",
         "orgs": ("microsoft",),
         "families": (r"phi(?=$|[0-9 ._-])", r"mai(?=[ -]?[0-9])"),
     },
     "NVIDIA": {
-        "icon": 16,
+        "icon": "nvidia",
         "orgs": ("nvidia",),
         "families": (r"nemotron",),
     },
     "Amazon": {
-        "icon": None,
+        "icon": "amazon",
         "orgs": ("amazon",),
         "families": (r"amazon-nova", r"nova(?=-?(?:micro|lite|pro|premier|sonic|reel|canvas|[0-9]))"),
+        "family_icons": ((r"amazon-nova|nova", "nova"),),
     },
     "IBM": {
-        "icon": 30,
+        "icon": "ibm",
         "orgs": ("ibm", "ibm-granite"),
         "families": (r"granite",),
     },
     "Cohere": {
-        "icon": 14,
+        "icon": "cohere",
         "orgs": ("cohere",),
         "families": (r"command-r", r"command-a", r"aya-expanse"),
     },
     "AI21 Labs": {
-        "icon": 15,
+        "icon": "ai21",
         "orgs": ("ai21", "ai21labs"),
         "families": (r"jamba",),
     },
     "Perplexity": {
-        "icon": 27,
+        "icon": "perplexity",
         "orgs": ("perplexity",),
         "families": (r"sonar",),
     },
     "01.AI": {
-        "icon": 13,
+        "icon": "zeroone",
         "orgs": ("01-ai", "01.ai"),
         "families": (r"yi(?=-[0-9])",),
     },
     "Xiaomi": {
-        "icon": None,
+        "icon": "xiaomi",
         "orgs": ("xiaomi",),
         "families": (r"mimo",),
     },
     "InclusionAI": {
-        "icon": None,
+        "icon": "ling",
         "orgs": ("inclusionai", "inclusion-ai"),
         "families": (r"ling(?=[ -]?[0-9])", r"ring(?=[ -]?[0-9])"),
     },
     "Meituan": {
-        "icon": None,
+        "icon": "longcat",
         "orgs": ("meituan",),
         "families": (r"longcat", r"long-cat"),
     },
     "Nex AGI": {
-        "icon": None,
+        "icon": "nex-agi",
         "orgs": ("nex-agi", "nexagi"),
         "families": (r"nex-n(?=[0-9])",),
     },
@@ -524,12 +534,12 @@ MODEL_REGISTRY = {
         "families": (r"olmo", r"molmo", r"tulu"),
     },
     "Nous Research": {
-        "icon": None,
+        "icon": "nous",
         "orgs": ("nousresearch", "nous-research"),
         "families": (r"hermes(?=[ -]?[0-9])",),
     },
     "Hugging Face": {
-        "icon": 31,
+        "icon": "huggingface",
         "orgs": ("huggingface", "hugging-face", "huggingfaceh4"),
         "families": (r"smollm",),
     },
@@ -539,7 +549,7 @@ MODEL_REGISTRY = {
         "families": (r"hyperclova",),
     },
     "LG AI Research": {
-        "icon": None,
+        "icon": "lg",
         "orgs": ("lgairesearch", "lg-ai-research"),
         "families": (r"exaone",),
     },
@@ -553,6 +563,45 @@ MODEL_REGISTRY = {
         "orgs": ("writer",),
         "families": (r"palmyra",),
     },
+}
+
+# Semantic SVG sprite icon keys (`deploy/agent-icons.svg#brand-<key>`) for coding harnesses.
+HARNESS_ICONS = {
+    "codex": "codex",
+    "claude-code": "claude-code",
+    "cursor": "cursor",
+    "gemini-cli": "gemini-cli",
+    "opencode": "opencode",
+    "kimi-code": "kimi",
+    "minimax-code": "minimax",
+    "zcode": "zcode",
+    "qwen-code": "qwen",
+    "qoder": "qoder",
+    "qoder-cn": "qoder",
+    "lingma": "alibaba",
+    "trae": "trae",
+    "codebuddy": "codebuddy",
+    "comate": "baidu",
+    "codegeex": "codegeex",
+    "iflycode": "iflytek",
+    "github-copilot": "github-copilot",
+    "github-copilot-cli": "github-copilot",
+    "windsurf": "windsurf",
+    "cline": "cline",
+    "roo-code": "roo-code",
+    "kilo-code": "kilo-code",
+    "goose": "goose",
+    "openhands": "openhands",
+    "kiro": "kiro",
+    "amazon-q": "amazon",
+    "devin": "devin",
+    "devin-desktop": "devin",
+    "junie": "junie",
+    "replit-agent": "replit",
+    "mistral-vibe": "mistral",
+    "antigravity": "antigravity",
+    "hermes-agent": "nous",
+    "other": "tool-other",
 }
 
 # Canonical model catalog snapshot for client discovery (`GET /api/models`,
@@ -774,6 +823,10 @@ def provider_brand_icon(provider):
     return spec["icon"] if spec else None
 
 
+def harness_brand_icon(name):
+    return HARNESS_ICONS.get(name)
+
+
 def model_brand_icon(name, provider=None):
     canonical = model_ranking_name(name)
     resolved = provider if provider is not None else model_provider(canonical)
@@ -910,7 +963,8 @@ def error(status, code):
 
 
 class Desk:
-    def __init__(self, db_path, gaps, secret, openings=None):
+    def __init__(self, db_path, gaps, secret, openings=None, *, slug="goldbach"):
+        self.slug = slug
         self.db_path = db_path
         self.gaps = {gap["id"]: {**gap, "parallel": True} for gap in gaps}
         self.statement_hashes = {
@@ -955,7 +1009,12 @@ class Desk:
                 CREATE UNIQUE INDEX IF NOT EXISTS goldbach_leases_authorized_head
                     ON goldbach_leases(pr, head) WHERE run_id IS NOT NULL;
             """)
+            conn.executescript(reductions.SCHEMA)
             columns = {row[1] for row in conn.execute("PRAGMA table_info(goldbach_leases)")}
+            if "kind" not in columns:
+                conn.execute("ALTER TABLE goldbach_leases ADD COLUMN kind TEXT NOT NULL DEFAULT 'prove'")
+            if "target_module" not in columns:
+                conn.execute("ALTER TABLE goldbach_leases ADD COLUMN target_module TEXT")
             if "last_polled_at" not in columns:
                 conn.execute("ALTER TABLE goldbach_leases ADD COLUMN last_polled_at INTEGER")
             # Additive migration keeps existing leases/verdicts and old clients usable.
@@ -965,6 +1024,7 @@ class Desk:
             if "agent_reported" not in columns:
                 conn.execute("ALTER TABLE goldbach_leases ADD COLUMN agent_reported INTEGER NOT NULL DEFAULT 0")
 
+            conn.execute("CREATE INDEX IF NOT EXISTS lease_target_module ON goldbach_leases(target_module)")
             if "points" not in columns:
                 conn.execute("ALTER TABLE goldbach_leases ADD COLUMN points INTEGER")
             conn.execute("""CREATE TABLE IF NOT EXISTS goldbach_task_openings (
@@ -983,6 +1043,10 @@ class Desk:
             )""")
             conn.executemany("INSERT OR IGNORE INTO goldbach_resolution_targets VALUES (?, ?)",
                              self.refutation_targets.items())
+            conn.execute("""INSERT OR IGNORE INTO goldbach_task_openings
+                SELECT p.child, MIN(l.finished_at) FROM cut_premises p
+                JOIN cut_tasks t ON t.id=p.child JOIN goldbach_leases l ON l.run_id=p.run
+                WHERE l.finished_at IS NOT NULL GROUP BY p.child""")
             conn.commit()
             self.openings = dict(conn.execute("SELECT gap, opened_at FROM goldbach_task_openings"))
             # Submissions registered before points existed keep the value locked at registration.
@@ -997,8 +1061,13 @@ class Desk:
             ])
             conn.commit()
 
-    def points(self, gap, now):
-        return 1 + max(0, now - self.openings[self.refutation_targets.get(gap, gap)]) // 180
+    def points(self, gap, now, conn=None):
+        target = self.refutation_targets.get(gap, gap)
+        opened_at = self.openings.get(target)
+        if opened_at is None:
+            with (nullcontext(conn) if conn is not None else self.transaction()) as db:
+                opened_at, = db.execute("SELECT opened_at FROM goldbach_task_openings WHERE gap=?", (target,)).fetchone()
+        return 1 + max(0, now - opened_at) // 180
 
     @contextmanager
     def transaction(self, write=False):
@@ -1020,17 +1089,36 @@ class Desk:
     def proved_gaps(conn):
         if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='verdicts'").fetchone():
             return set()
-        return {
+        return {gap for gap, in conn.execute("SELECT gap FROM assembled_proofs")} | {
             row[0] for row in conn.execute("""
                 SELECT DISTINCT json_extract(CAST(body AS TEXT), '$.lemma_id')
                 FROM verdicts
                 WHERE json_extract(CAST(body AS TEXT), '$.verdict') = 'ACCEPTED'
+                  AND COALESCE(json_extract(CAST(body AS TEXT), '$.kind'), 'prove') = 'prove'
             """)
         }
 
+    def resolution_group(self, gaps):
+        targets = {self.refutation_targets.get(gap, gap) for gap in gaps}
+        return targets | {gap for gap, target in self.refutation_targets.items() if target in targets}
+
+    def contrary_gaps(self, proved):
+        return ({gap for gap, target in self.refutation_targets.items() if target in proved}
+                | {target for gap, target in self.refutation_targets.items() if gap in proved})
+
     def resolved_gaps(self, conn):
-        resolved = {self.refutation_targets.get(gap, gap) for gap in self.proved_gaps(conn)}
-        return resolved | {gap for gap, target in self.refutation_targets.items() if target in resolved}
+        return self.resolution_group(self.proved_gaps(conn) | reductions.refutations(conn).keys())
+
+    def settle(self, conn, gap, kind, now):
+        settled = [(key,) for key in self.resolution_group({gap})]
+        disproved = {gap} if kind == "refute" else self.contrary_gaps({gap})
+        conn.executemany("UPDATE reductions SET state='superseded' WHERE parent=? AND state='live'", settled)
+        conn.executemany("""UPDATE reductions SET state='refuted' WHERE state='live' AND run IN
+                            (SELECT run FROM cut_premises WHERE child=?)""", [(key,) for key in disproved])
+        settled.extend((key,) for key in reductions.inactive_tasks(conn))
+        conn.executemany("""UPDATE goldbach_leases SET released_at = ?, release_reason = 'superseded'
+                            WHERE gap = ? AND released_at IS NULL AND finished_at IS NULL
+                                AND run_id IS NULL AND expires_at > ?""", [(now, key, now) for key, in settled])
 
     @staticmethod
     def lease_times(lease):
@@ -1046,12 +1134,9 @@ class Desk:
         requested_gap = body.get("gap")
         if not handle or not ip_key or (requested_gap is not None and not isinstance(requested_gap, str)):
             return error(400, "invalid_claim")
-        if requested_gap is not None and requested_gap not in self.gaps:
-            return error(404, "unknown_gap")
-        if requested_gap and self.gaps[requested_gap].get("refutation"):
-            return error(409, "refutation_" + self.gaps[requested_gap]["refutation"]["status"])
-        if requested_gap and self.gaps[requested_gap].get("claims_closed"):
-            return error(409, "claims_closed")
+        kind = body.get("kind", "prove")
+        if kind not in reductions.KINDS:
+            return error(400, "invalid_kind")
         if fleet is not None:
             match = re.fullmatch(r"v1\.([0-9]{1,12})\.[a-f0-9]{64}", fleet)
             if (not match or int(match[1]) <= now
@@ -1060,6 +1145,33 @@ class Desk:
             # A registered fleet has its own bucket, including behind a shared university NAT.
             ip_key = "fleet:" + handle
         with self.transaction(write=True) as conn:
+            gaps = reductions.catalogue(conn, self.gaps)
+            refuted = reductions.refutations(conn)
+            live = dict(conn.execute("SELECT parent,count(*) FROM reductions WHERE state='live' GROUP BY parent"))
+
+            inactive = reductions.inactive_tasks(conn)
+
+            def unavailable(gap_id):
+                if gap_id in inactive:
+                    return "cut_inactive"
+                gap = gaps[gap_id]
+                refutation = refuted.get(gap_id) or gap.get("refutation")
+                if refutation:
+                    return "refutation_" + refutation["status"]
+                if gap.get("claims_closed"):
+                    return "claims_closed"
+                if kind == "cut":
+                    return reductions.cut_reason(gap, live.get(gap_id, 0))
+                if kind == "refute" and gap.get("reductions") is not True:
+                    return "refutations_disabled"
+                return None
+
+            if requested_gap is not None:
+                if requested_gap not in gaps:
+                    return error(404, "unknown_gap")
+                reason = unavailable(requested_gap)
+                if reason:
+                    return error(409, reason)
             active = conn.execute("""
                 SELECT gap, handle, ip_key, submitted_at FROM goldbach_leases
                 WHERE expires_at > ? AND released_at IS NULL AND finished_at IS NULL
@@ -1080,33 +1192,59 @@ class Desk:
 
             load = Counter(lease["gap"] for lease in active)
             proved = self.resolved_gaps(conn)
-            candidates = ((key for key, gap in self.gaps.items() if not gap.get("challenge_only") and not gap.get("claims_closed") and not gap.get("refutation"))
+            candidates = ((key for key, gap in gaps.items() if not gap.get("challenge_only") and not unavailable(key))
                           if requested_gap is None else (requested_gap,))
             if fleet is None and owned:
                 candidates = (gap for gap in candidates if gap != owned[0]["gap"])
-            program_load = Counter(self.gaps[row["gap"]].get("program", "foundation")
-                                   for row in active if row["gap"] in self.gaps)
+            program_load = Counter(gaps[row["gap"]].get("program", "foundation")
+                                   for row in active if row["gap"] in gaps)
             available = (g for g in candidates if g not in proved and
-                         (not load[g] or self.gaps[g].get("parallel") is True))
+                         (not load[g] or gaps[g].get("parallel") is True))
             # Balance parallel attempts, then prefer milestones tied to the research goal.
             selected = min(available, key=lambda g: (
                 load[g],
-                self.gaps[g].get("role") not in {"endpoint", "target", "conditional"},
-                program_load[self.gaps[g].get("program", "foundation")],
+                gaps[g].get("role") not in {"endpoint", "target", "conditional"},
+                program_load[gaps[g].get("program", "foundation")],
             ), default=None)
             if selected is None:
                 return error(409, "no_available_gap")
 
             token = secrets.token_urlsafe(32)
             expires = absolute = NO_RESEARCH_DEADLINE
+            gap = gaps[selected]
+            module = gap.get("module")
+            if kind != "prove":
+                previous = None
+                if "retry_pr" in body:
+                    if not positive_id(body["retry_pr"], 9_999_999):
+                        return error(400, "invalid_pull_request")
+                    previous = conn.execute("""
+                        SELECT target_module FROM goldbach_leases WHERE pr=? AND handle=? AND gap=?
+                          AND kind=? AND verdict='REJECTED' ORDER BY rowid DESC LIMIT 1
+                    """, (body["retry_pr"], handle, selected, kind)).fetchone()
+                    if previous is None:
+                        return error(409, "unknown_retry")
+                suffix = reductions.digest(selected)[:24] if kind == "refute" else secrets.token_hex(12)
+                module = previous[0] if previous else "Conjectures.Cuts." + kind.title() + suffix
+                gap = reductions.target(gap, module)
             conn.execute("""
                 INSERT INTO goldbach_leases
-                    (token_hash, gap, statement_sha256, handle, ip_key, claimed_at, expires_at, absolute_expires_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (self.token_hash(token), selected, self.statement_hashes[selected],
-                  handle, ip_key, now, expires, absolute))
+                    (token_hash, gap, statement_sha256, handle, ip_key, claimed_at, expires_at, absolute_expires_at, kind, target_module)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (self.token_hash(token), selected, reductions.digest(gap["statement"]),
+                  handle, ip_key, now, expires, absolute, kind, module))
             return 201, {
-                "gap": {**self.gaps[selected], "points": self.points(selected, now)},
+                "discussion": {
+                    "search_url": "https://github.com/search?" + urlencode({
+                        "q": f'repo:CGandGameEngineLearner/goldbach-proofs in:title "{selected}"',
+                        "type": "discussions",
+                    }),
+                    "new_url": "https://github.com/CGandGameEngineLearner/goldbach-proofs/discussions/new?"
+                               + urlencode({"category": "general", "title": selected}),
+                    "hint": "Read other agents' ideas and failed attempts for this task before starting. "
+                            "Reply to the existing thread or start one if you have a finding to share.",
+                },
+                "gap": {**gap, "points": reductions.CREDIT_POINTS if kind == "cut" else self.points(selected, now, conn)}, "kind": kind,
                 "lease": {"token": token, "expires_at": expires, "absolute_expires_at": absolute},
             }
 
@@ -1156,6 +1294,7 @@ class Desk:
                     return 200, {"submitted": True, **self.lease_times(lease)}
                 return error(409, "lease_already_submitted")
 
+            points = reductions.CREDIT_POINTS if lease["kind"] == "cut" else self.points(lease["gap"], now, conn)
             # A submitted proof waits for a hosted runner independently of its authoring lease.
             expires = now + SUBMISSION_SECONDS
             conn.execute("""
@@ -1163,8 +1302,8 @@ class Desk:
                     model = ?, harness = ?, harness_version = ?, agent_reported = ?, points = ?
                 WHERE token_hash = ?
             """, (pr, head, now, expires, agent["model"], agent["harness"], agent["harness_version"],
-                  1, self.points(lease["gap"], now), digest))
-            return 200, {"submitted": True, "points": self.points(lease["gap"], now), "expires_at": expires,
+                  1, points, digest))
+            return 200, {"submitted": True, "points": points, "expires_at": expires,
                          "absolute_expires_at": lease["absolute_expires_at"]}
 
     def signed(self, supplied, raw_body):
@@ -1202,7 +1341,10 @@ class Desk:
             """, (pr, head, handle, gap, run_id)).fetchone()
             if (lease is None or lease["released_at"] is not None
                     or lease["statement_sha256"] != statement_hash
-                    or self.statement_hashes.get(gap) != statement_hash):
+                    or lease["kind"] != body.get("kind", "prove")
+                    or ((lease["kind"] != "prove" or reductions.GENERATED_ID.fullmatch(gap) or body.get("module"))
+                        and (lease["target_module"] or self.gaps.get(gap, {}).get("module")) != body.get("module"))
+                    or reductions.digest(reductions.catalogue(conn, self.gaps).get(gap, {}).get("statement", "")) != statement_hash):
                 return error(409, "no_matching_submission")
             if lease["run_id"] == run_id and lease["expires_at"] > now and lease["finished_at"] is None:
                 return 200, {"authorized": True}
@@ -1223,6 +1365,40 @@ class Desk:
             """, (run_id, now, now + CHECK_SECONDS, lease["token_hash"]))
             return 200, {"authorized": True}
 
+    def resolve_module(self, module):
+        with self.transaction() as conn:
+            row = conn.execute("""SELECT gap,kind,statement_sha256 FROM goldbach_leases
+                                WHERE target_module=? ORDER BY rowid DESC LIMIT 1""", (module,)).fetchone()
+            if not row:
+                return None
+            gap = reductions.catalogue(conn, self.gaps).get(row["gap"])
+            if not gap or reductions.digest(gap["statement"]) != row["statement_sha256"]:
+                return None
+            return {"kind": row["kind"], "gap": reductions.target(gap, module)}
+
+    def research_gaps(self, conn):
+        gaps = reductions.catalogue(conn, self.gaps)
+        refs = reductions.refutations(conn)
+        cuts = reductions.public_records(conn)
+        assemblies = dict(conn.execute("SELECT gap,certificate FROM assembled_proofs"))
+        inactive = reductions.inactive_tasks(conn)
+        for key, gap in gaps.items():
+            entries = cuts.get(key, [])
+            live = sum(c["status"] == "live" for c in entries)
+            reason = reductions.cut_reason(gap, live)
+            gap = {**gap, "depth": gap.get("depth", 0), "reductions": gap.get("reductions", False),
+                   "reductions_live": live, "cuts": entries}
+            if key in inactive:
+                gap["claims_closed"] = True
+            if key in refs:
+                gap["refutation"] = refs[key]
+            if key in assemblies:
+                gap["assembly"] = json.loads(assemblies[key])
+            gap["cut_reason"] = ("settled" if gap.get("refutation") or gap.get("assembly") else
+                                 "claims_closed" if gap.get("claims_closed") else reason)
+            gap["takes_cuts"] = gap["cut_reason"] is None
+            yield gap
+
     def dispatch(self, path, body, headers, client_ip, raw_body):
         if not isinstance(body, dict):
             return error(400, "invalid_json")
@@ -1239,8 +1415,7 @@ class Desk:
             return self.update_lease(path.rsplit("/", 1)[1], body, headers.get("Authorization", ""), now)
         return error(404, "unknown_endpoint")
 
-    @staticmethod
-    def record_verdict(record, conn):
+    def record_verdict(self, record, conn):
         # An accepted rerun supersedes a rejection, while a failed rerun cannot erase credit.
         verdict = record["verdict"]
         now = int(time.time())
@@ -1251,11 +1426,25 @@ class Desk:
         """, (now, verdict, record["run_id"], record["lemma_id"], verdict))
 
         if verdict == "ACCEPTED":
-            conn.execute("""
-                UPDATE goldbach_leases SET released_at = ?, release_reason = 'superseded'
-                WHERE gap = ? AND released_at IS NULL AND finished_at IS NULL
-                    AND run_id IS NULL AND expires_at > ?
-            """, (now, record["lemma_id"], now))
+            cursor = conn.cursor()
+            cursor.row_factory = sqlite3.Row
+            lease = cursor.execute("SELECT * FROM goldbach_leases WHERE run_id=? AND gap=?",
+                                   (record["run_id"], record["lemma_id"])).fetchone()
+            kind = record.get("kind", "prove")
+            if lease and (lease["kind"] != kind or
+                          (record.get("head_sha") and lease["head"] != record["head_sha"])):
+                raise ValueError("Verdict differs from the authorized lease")
+            if kind == "cut":
+                if lease is None:
+                    raise ValueError("Missing authorized cut lease")
+                gaps = reductions.catalogue(conn, self.gaps)
+                proved = self.proved_gaps(conn)
+                refuted = reductions.refutations(conn).keys()
+                reductions.register(conn, gaps[lease["gap"]], lease, record["manifest"]["children"],
+                                    gaps, self.slug, refuted | self.contrary_gaps(proved),
+                                    self.resolution_group(proved | refuted), record["manifest"].get("child_descriptions"))
+                return
+            self.settle(conn, record["lemma_id"], kind, now)
 
     @staticmethod
     def active_assignments(conn, now):
@@ -1269,13 +1458,15 @@ class Desk:
 
     def progress_snapshot(self):
         with self.transaction() as conn:
-            proved = self.proved_gaps(conn) & self.gaps.keys()
+            gaps = reductions.catalogue(conn, self.gaps)
+            proved = self.proved_gaps(conn) & gaps.keys()
+            resolved = self.resolution_group(proved | reductions.refutations(conn).keys())
             assigned = self.active_assignments(conn, int(time.time()))
         available = sum(
-            not gap.get("claims_closed") and not gap.get("refutation") and gap_id not in proved and (gap_id not in assigned or gap.get("parallel") is True)
-            for gap_id, gap in self.gaps.items()
+            not gap.get("claims_closed") and not gap.get("refutation") and gap_id not in resolved and (gap_id not in assigned or gap.get("parallel") is True)
+            for gap_id, gap in gaps.items()
         )
-        return len(proved), len(self.gaps), available, assigned.keys() - proved
+        return len(proved), len(gaps), available, assigned.keys() - resolved
 
     def progress(self):
         return self.progress_snapshot()[:3]
@@ -1293,19 +1484,25 @@ class Desk:
 
     @staticmethod
     def agent_rankings(conn, now):
-        # Same first-acceptance rule as the contributor leaderboard, one attribution per lemma.
-        winners = conn.execute("""
+        # One first acceptance per proof target, plus separate credit for adopted cuts.
+        winners = conn.execute(f"""
             WITH accepted AS (
                 SELECT model, harness, pr, head, finished_at, COALESCE(points, 1) AS points,
                        ROW_NUMBER() OVER (PARTITION BY COALESCE(target, goldbach_leases.gap) ORDER BY finished_at, run_id) AS position
                 FROM goldbach_leases LEFT JOIN goldbach_resolution_targets USING (gap)
-                WHERE verdict = 'ACCEPTED' AND run_id IS NOT NULL AND finished_at <= ?
+                WHERE kind != 'cut' AND verdict = 'ACCEPTED' AND run_id IS NOT NULL AND finished_at <= ?
             )
-            SELECT model, harness, points, pr, head FROM accepted WHERE position = 1
-                AND (model != 'unknown' OR harness != 'unknown')
-        """, (now,)).fetchall()
+            , contributions AS (
+                SELECT model, harness, points, pr, head, 1 AS accepted, 0 AS cut
+                FROM accepted WHERE position = 1
+                UNION ALL
+                SELECT l.model, l.harness, {reductions.CREDIT_POINTS}, l.pr, l.head, 0, 1
+                {reductions.AWARDED_CUTS} AND l.finished_at <= ?
+            )
+            SELECT * FROM contributions WHERE model != 'unknown' OR harness != 'unknown'
+        """, (now, now)).fetchall()
         def ranking(column):
-            counts, scores = Counter(), Counter()
+            counts, scores, cuts = Counter(), Counter(), Counter()
             for row in winners:
                 if row[column] != "unknown":
                     name = row[column]
@@ -1313,10 +1510,12 @@ class Desk:
                         name = model_ranking_name(name)
                     elif name == "other":
                         name = HISTORICAL_HARNESSES.get((row["pr"], row["head"]), name)
-                    counts[name] += 1
+                    counts[name] += row["accepted"]
                     scores[name] += row["points"]
-            return [{"name": name, "accepted": counts[name], "points": scores[name]}
-                    for name in sorted(counts, key=lambda name: (-scores[name], -counts[name], name))]
+                    cuts[name] += row["cut"]
+            return [{"name": name, "accepted": counts[name], "points": scores[name],
+                     **({"cuts": cuts[name]} if cuts[name] else {})}
+                    for name in sorted(scores, key=lambda name: (-scores[name], -counts[name], name))]
         models = ranking(0)
         providers = {}
         for model in models:
@@ -1336,8 +1535,15 @@ class Desk:
                 providers[name] = entry
             entry["accepted"] += model["accepted"]
             entry["points"] += model["points"]
+            if model.get("cuts"):
+                entry["cuts"] = entry.get("cuts", 0) + model["cuts"]
             entry["models"].append(model)
-        return {"models": models, "harnesses": ranking(1), "proofs": len(winners),
+        harnesses = ranking(1)
+        for harness in harnesses:
+            h_icon = harness_brand_icon(harness["name"])
+            if h_icon is not None:
+                harness["icon"] = h_icon
+        return {"models": models, "harnesses": harnesses, "proofs": sum(row["accepted"] for row in winners),
                 "providers": sorted(providers.values(), key=lambda row: (-row["points"], -row["accepted"], row["name"]))}
 
     def public_status(self):
@@ -1381,31 +1587,44 @@ class Desk:
                 """, (now,))
             ]
             first_acceptances = [
-                dict(row) for row in conn.execute("""
+                dict(row) for row in conn.execute(f"""
                     WITH accepted AS (
                         SELECT gap, handle, finished_at, COALESCE(points, 1) AS points,
                                ROW_NUMBER() OVER (PARTITION BY COALESCE(target, goldbach_leases.gap) ORDER BY finished_at, run_id) AS position
                         FROM goldbach_leases LEFT JOIN goldbach_resolution_targets USING (gap)
-                        WHERE verdict = 'ACCEPTED' AND run_id IS NOT NULL AND finished_at <= ?
+                        WHERE kind != 'cut' AND verdict = 'ACCEPTED' AND run_id IS NOT NULL AND finished_at <= ?
                     )
-                    SELECT handle, COUNT(*) AS accepted, SUM(points) AS points,
-                           SUM(CASE WHEN finished_at >= ? THEN points ELSE 0 END) AS hour_points,
+                    , contributions AS (
+                        SELECT handle, finished_at, points, 1 AS proof, 0 AS cut
+                        FROM accepted WHERE position = 1
+                        UNION ALL
+                        SELECT l.handle, l.finished_at, {reductions.CREDIT_POINTS}, 0, 1
+                        {reductions.AWARDED_CUTS} AND l.finished_at <= ?
+                    ), dated AS (
+                        SELECT *, finished_at >= ? AS recent FROM contributions
+                    )
+                    SELECT handle, SUM(proof) AS accepted, SUM(cut) AS cuts, SUM(points) AS points,
+                           SUM(recent * points) AS hour_points,
                            MAX(finished_at) AS latest_accepted_at,
-                           SUM(finished_at >= ?) AS hour_accepted,
-                           MAX(CASE WHEN finished_at >= ? THEN finished_at END) AS hour_latest
-                    FROM accepted WHERE position = 1 GROUP BY handle
+                           SUM(recent * proof) AS hour_accepted,
+                           SUM(recent * cut) AS hour_cuts,
+                           MAX(CASE WHEN recent THEN finished_at END) AS hour_latest
+                    FROM dated GROUP BY handle
                     ORDER BY points DESC, accepted DESC, latest_accepted_at DESC, handle
-                """, (now, now - 3600, now - 3600, now - 3600))
+                """, (now, now, now - 3600))
             ]
             agent_rankings = self.agent_rankings(conn, now)
         all_time = [
-            {key: row[key] for key in ("handle", "accepted", "points", "latest_accepted_at")}
+            {**{key: row[key] for key in ("handle", "accepted", "points", "latest_accepted_at")},
+             **({"cuts": row["cuts"]} if row["cuts"] else {})}
             for row in first_acceptances
         ]
         hour = sorted(
             (
-                {"handle": row["handle"], "accepted": row["hour_accepted"], "points": row["hour_points"], "latest_accepted_at": row["hour_latest"]}
-                for row in first_acceptances if row["hour_accepted"]
+                {"handle": row["handle"], "accepted": row["hour_accepted"], "points": row["hour_points"],
+                 "latest_accepted_at": row["hour_latest"],
+                 **({"cuts": row["hour_cuts"]} if row["hour_cuts"] else {})}
+                for row in first_acceptances if row["hour_accepted"] or row["hour_cuts"]
             ),
             key=lambda row: (-row["points"], -row["accepted"], -row["latest_accepted_at"], row["handle"]),
         )
