@@ -1,4 +1,4 @@
-name: Pre-PR single-file kernel verification (WideRemainderInnerFloor)
+name: Pre-PR cached kernel verification (WideRemainderInnerFloor + SignedFrozenReduction)
 on:
   push:
     branches: [pre-pr/L-goldbach-wide-remainder-inner-floor-route-b]
@@ -7,38 +7,59 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [WideRemainderInnerFloor, InnerFloorSignedFrozenReduction]
     steps:
       - uses: actions/checkout@v4
+      - name: Restore community build objects
+        uses: actions/cache/restore@v4
+        with:
+          path: lean/.lake/build
+          key: inner-research-linux-x64-20261128-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-${{ github.run_id }}
+          restore-keys: |
+            inner-research-linux-x64-20261128-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-
+            inner-community-linux-x64-1fe24b28-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-
       - name: Set up pinned Lean and Mathlib
         run: |
-          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain leanprover/lean4:v4.36.0
+          curl --retry 4 -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --no-modify-path --default-toolchain none
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
           export PATH="$HOME/.elan/bin:$PATH"
           cd lean
           lake exe cache get
-      - name: Build official DyadicCellShortPrimeFloor dependency
+          if [ "${{ matrix.target }}" = "WideRemainderInnerFloor" ]; then
+            time lake build Conjectures.Goldbach.DyadicCellShortPrimeFloor
+          else
+            time lake build Conjectures.Goldbach.DyadicCellShortPrimeFloor Conjectures.Goldbach.ReflectionCharacterContraction PEqualNP.Outside.L_goldbach_frontier_type2_b1_b4 Conjectures.Goldbach.LowSkirtFromShortProgressions PEqualNP.Outside.L_goldbach_frontier_medcore_bv_band
+          fi
+      - name: Verify exact target in kernel
         run: |
+          export PATH="$HOME/.elan/bin:$PATH"
           cd lean
-          lake build Conjectures.Goldbach.DyadicCellShortPrimeFloor
-      - name: Verify exact single-file pre-PR candidate in kernel
-        run: |
-          cd lean
-          echo "32fbe75a08979378e124ac1d3a3c72b99aa5cc5a8ee9f7e160572b87e1e10e7e  Conjectures/Goldbach/WideRemainderInnerFloor.lean" | sha256sum -c -
-          lake env lean Conjectures/Goldbach/WideRemainderInnerFloor.lean 2>&1 | tee /tmp/pre_pr_verify.log
-          python3 - << 'PY'
-          import pathlib, re
-          log = pathlib.Path('/tmp/pre_pr_verify.log').read_text()
+          target="${{ matrix.target }}"
+          case "$target" in
+            WideRemainderInnerFloor) echo "32fbe75a08979378e124ac1d3a3c72b99aa5cc5a8ee9f7e160572b87e1e10e7e  Conjectures/Goldbach/$target.lean" | sha256sum -c - ;;
+            InnerFloorSignedFrozenReduction) echo "249285c2242a6e181c11ee434be57f53c49476a7b80045c675b48dd1cb0d6cad  Conjectures/Goldbach/$target.lean" | sha256sum -c - ;;
+            *) exit 2 ;;
+          esac
+          time lake env lean "Conjectures/Goldbach/$target.lean" 2>&1 | tee "/tmp/$target.log"
+          python3 - "$target" << 'PY'
+          import sys, pathlib, re
+          t = sys.argv[1]
+          expected = {'WideRemainderInnerFloor': 73, 'InnerFloorSignedFrozenReduction': 1}
+          log = pathlib.Path('/tmp/' + t + '.log').read_text()
           assert 'sorryAx' not in log, 'Found sorryAx!'
           assert 'error:' not in log, 'Found error!'
           matches = re.findall(r'depends on axioms: \[([^\]]*)\]', log)
-          assert len(matches) == 73, f'Expected 73 axiom audits, got {len(matches)}'
+          assert len(matches) == expected[t], f'Expected {expected[t]} axiom audits, got {len(matches)}'
           for m in matches:
               axs = {a.strip() for a in m.split(',') if a.strip()}
               assert axs <= {'propext', 'Classical.choice', 'Quot.sound'}, f'Unexpected axioms: {axs}'
-          print(f'PRE-PR KERNEL AUDIT PASS: {len(matches)} declarations, standard 3 axioms only!')
+          print(f'KERNEL AUDIT PASS {t}: {len(matches)} declarations, standard 3 axioms only!')
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pre-pr-WideRemainderInnerFloor-log
-          path: /tmp/pre_pr_verify.log
+          name: pre-pr-${{ matrix.target }}-log
+          path: /tmp/${{ matrix.target }}.log
