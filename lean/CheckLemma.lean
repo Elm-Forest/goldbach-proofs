@@ -240,7 +240,7 @@ def decidesFalse (env : Environment) (t : Expr) : IO Bool := do
   | .error _ => return false
 
 /-- Everything `reduce` adds to `check`. On success, the children with the text each is
-printed as (which has been parsed and elaborated again and found structurally equal). -/
+printed as (which has been read back and checked by the kernel against the submitted child). -/
 unsafe def reduceShape (stmtEnv full : Environment) (libEnv : Kernel.Environment)
     (checked : Name → Option ConstantInfo) (mod : Name) (thm : TheoremVal) (recorded : Expr) :
     IO (Except (String × String) (Array (Expr × String))) := do
@@ -319,26 +319,48 @@ unsafe def reduceShape (stmtEnv full : Environment) (libEnv : Kernel.Environment
   for i in [0:k] do
     let t := kids[i]!
     let which := s!"child {i + 1} of {mod}"
-    let printed ← (runMetaIn stmtEnv do
-        let f ← Meta.ppExpr (canonBinders t)
-        return (f.pretty 1000000).replace "\n" " ").toBaseIO
-    let text ← match printed with
-      | .ok s => pure s
-      | .error e => return ← fail "reduce-child" s!"{which} could not be printed: {e}"
-    if text.length > maxChildChars then
-      return ← fail "reduce-child" s!"{which} prints as {text.length} characters; a child prints in at most {maxChildChars}"
-    match Parser.runParserCategory stmtEnv `term text "<child>" with
-    | .error e => return ← fail "reduce-child" s!"{which} prints as `{text}`, which is not one Lean term: {e}"
-    | .ok _ => pure ()
-    let src := "set_option autoImplicit false\ntheorem PEqualNPChecker.child :\n(\n" ++ text ++ "\n) := sorry\n"
-    let (env', msgs) ← Elab.process src stmtEnv {} (fileName := "<child>")
-    if msgs.hasErrors then
-      return ← fail "reduce-child" s!"{which} prints as `{text}`, which does not elaborate again in the statement environment"
-    let some back := env'.find? `PEqualNPChecker.child
-      | return ← fail "reduce-child" s!"{which} prints as `{text}`, which did not elaborate to a declaration"
-    unless back.levelParams.isEmpty && back.type == t do
-      return ← fail "reduce-child" s!"{which} prints as `{text}`, which elaborates again to a different term; the printed text would not mean the child"
-    out := out.push (t, text)
+    let roundTrip (typedCoercions : Bool) : IO (Except String (Expr × String)) := do
+      let printed ← (runMetaIn stmtEnv do
+          let f ← withOptions (fun opts => opts.setBool `pp.coercions.types typedCoercions) <|
+            Meta.ppExpr (canonBinders t)
+          return (f.pretty 1000000).replace "\n" " ").toBaseIO
+      let text ← match printed with
+        | .ok s => pure s
+        | .error e => return .error s!"could not be printed: {e}"
+      if text.length > maxChildChars then
+        return .error s!"prints as {text.length} characters; a child prints in at most {maxChildChars}"
+      match Parser.runParserCategory stmtEnv `term text "<child>" with
+      | .error e => return .error s!"prints as `{text}`, which is not one Lean term: {e}"
+      | .ok _ => pure ()
+      let src := "set_option autoImplicit false\ntheorem PEqualNPChecker.child :\n(\n" ++ text ++ "\n) := sorry\n"
+      let (env', msgs) ← Elab.process src stmtEnv {} (fileName := "<child>")
+      if msgs.hasErrors then
+        return .error s!"prints as `{text}`, which does not elaborate again in the statement environment"
+      let some back := env'.find? `PEqualNPChecker.child
+        | return .error s!"prints as `{text}`, which did not elaborate to a declaration"
+      unless back.levelParams.isEmpty do
+        return .error s!"prints as `{text}`, which re-elaborates with universe parameters"
+      if back.type == t then return .ok (back.type, text)
+      unless typedCoercions do
+        return .error s!"prints as `{text}`, which elaborates again to a different term"
+      let .ok true := Kernel.isDefEq stmtEnv {} back.type t
+        | return .error s!"prints as `{text}`, which is not definitionally equal to the submitted child"
+      let mut sw : Walk := {}
+      for c in back.type.getUsedConstantsAsSet do
+        sw := ((walk (fun n => if (libEnv.find? n).isSome then checked n else none) c).run sw).2
+      unless sw.missing.isEmpty && sw.axioms.all allowedAxioms.contains do
+        return .error "re-elaborated type uses declarations or axioms outside the allowed statement environment"
+      return .ok (back.type, text)
+    -- Keep the original text when it round-trips. A coercion before an overloaded
+    -- operation can require the target type to reconstruct the expression.
+    let printedChild ← match ← roundTrip false with
+      | .ok text => pure text
+      | .error _ =>
+        match ← roundTrip true with
+        | .ok text => pure text
+        | .error message => return ← fail "reduce-child" s!"{which} {message}"
+    -- The final kernel witness uses the exact type read from the published text.
+    out := out.push printedChild
   return .ok out
 
 unsafe def run (modStr stmtPath kind : String) : IO UInt32 := do
