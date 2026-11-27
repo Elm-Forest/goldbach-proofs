@@ -11,6 +11,7 @@ These finite algebraic results do not assert that a near-one zero exists.
 -/
 
 open Finset AddChar MulChar
+open Conjectures.Goldbach.ReflectionCharacterContraction_aux
 open scoped Classical
 namespace InnerFloorResearch
 noncomputable section
@@ -77,8 +78,7 @@ theorem primitiveQuadraticPacket_at_zero
   rw [hg]
   calc
     _ = (gaussSum χ ZMod.stdAddChar)^2*z^2/(q.totient:ℂ) := by
-      field_simp
-      ring
+      field_simp <;> ring
     _ = _ := by rw [hs]; ring
 
 /-- At a shift divisible by its conductor, an ODD primitive quadratic
@@ -92,7 +92,9 @@ theorem oddPrimitiveQuadraticPacket_negative
       (fun ψ => gaussSum ψ⁻¹ ZMod.stdAddChar*(z:ℂ)/(q.totient:ℂ))).re =
       -((q:ℝ)/(q.totient:ℝ))*z^2 := by
   rw [primitiveQuadraticPacket_at_zero χ hp hquad horder,hodd]
-  norm_cast
+  rw [show (-1:ℂ)*(q:ℂ)/(q.totient:ℂ)*(z:ℂ)^2 =
+    ((-((q:ℝ)/(q.totient:ℝ))*z^2:ℝ):ℂ) by push_cast; ring]
+  exact Complex.ofReal_re _
 
 end
 end InnerFloorResearch

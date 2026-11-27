@@ -7,6 +7,7 @@ open scoped Interval Topology Classical
 namespace InnerFloorResearch
 
 noncomputable section
+set_option maxHeartbeats 1500000
 
 open GoldbachFourthMoment (phase primeSum)
 open GoldbachGRHArcs (center centers mem_centers)
@@ -68,6 +69,7 @@ theorem arcCells_disjoint {n Q A : ℕ} {u : ℝ} (hn : 0 < n) (hu : 0 ≤ u)
     (hsep : 2*u*(A : ℝ) < (n : ℝ)) :
     (↑(mediumIndices Q A) : Set (ℕ × ℕ)).PairwiseDisjoint (arcCell n u) := by
   rintro ⟨q,a⟩ hi ⟨r,b⟩ hj hij
+  change Disjoint (arcCell n u (q,a)) (arcCell n u (r,b))
   rw [Set.disjoint_left]
   intro t ht ht'
   obtain ⟨hq,hqA,_,hc⟩ := mediumIndices_spec.mp (show (q,a) ∈ mediumIndices Q A from hi)
@@ -103,7 +105,7 @@ theorem arcCell_translate {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
   have hleft : realRadius n u q ≤ center (q,a) :=
     hr.trans (div_le_div_of_nonneg_right (by exact_mod_cast ha0) hqR.le)
   have hright : center (q,a) + realRadius n u q ≤ 1 := by
-    apply (add_le_add_left hr _).trans
+    apply (add_le_add_right hr _).trans
     change (a : ℝ)/q + 1/(q : ℝ) ≤ 1
     rw [← add_div, div_le_one hqR]
     exact_mod_cast haq
@@ -165,7 +167,7 @@ theorem mediumIntegral_eq_sum {n Q A : ℕ} {u : ℝ} (hn : 0 < n) (hu : 0 ≤ u
     · rintro ⟨⟨i,hi,ha⟩,ht⟩
       exact ⟨i,hi,ha,ht⟩
   rw [mediumIntegral, intervalIntegral.integral_of_le zero_le_one,
-    setIntegral_indicator (measurable_mediumBand n Q A u), inter_comm, ← hUnion]
+    setIntegral_indicator (measurable_mediumBand n Q A u), ← hUnion]
   exact integral_biUnion_finset (mediumIndices Q A) (fun i _ => measurable_arcCell n u i)
     (arcCells_disjoint hn hu hsep) (fun i _ => (hf.intervalIntegrable 0 1).1.mono_set
       Set.inter_subset_right)
@@ -202,7 +204,8 @@ theorem mediumModel_re {n Q A : ℕ} {u : ℝ} (hn : 0 < n) (hQ : 1 ≤ Q)
     obtain ⟨haq,hcop⟩ := mem_filter.mp ha
     simp_rw [GoldbachGRHModelAssembly.model_square_eq]
     rw [MeasureTheory.integral_const_mul, integral_complex_ofReal,
-      arcCell_translate hn hu hun hq₂ (mem_range.mp haq).le hcop] <;> rfl
+      arcCell_translate hn hu hun hq₂ (mem_range.mp haq).le hcop
+        (fun t : ℝ => ‖GoldbachGRHKernel.kernel n t‖^2)] <;> rfl
   rw [he]
   simp only [Complex.re_sum, Complex.mul_re, Complex.ofReal_re, Complex.ofReal_im, mul_zero,
     sub_zero]
@@ -225,7 +228,7 @@ theorem realWidthModelFloor (ε : ℝ) (hε : 0 < ε) :
     unfold realRadius
     exact div_pos hu (mul_pos (by linarith) hnR)
   have hmono (q : ℕ) (hq : Q ≤ q) : w (q+1) ≤ w q := by
-    apply GoldbachGRHKernel.mass_mono (hpos (q+1) (by omega)).le
+    apply GoldbachGRHKernel.mass_mono n (hpos (q+1) (by omega)).le
     have hqR : (0 : ℝ) < q := by exact_mod_cast hQ.trans hq
     unfold realRadius
     exact div_le_div_of_nonneg_left hu.le (mul_pos hqR hnR) (by
@@ -279,8 +282,7 @@ theorem middleEnergy_of_window {n Q A h : ℕ} {u : ℝ} (hn : 0 < n)
     have hqR : 1 ≤ (q : ℝ) := by exact_mod_cast hq0
     unfold δ realRadius
     rw [← mul_div_assoc, div_le_iff₀ (by positivity : 0 < (q : ℝ)*(n : ℝ)), one_mul]
-    exact hwidth.trans (by nlinarith only [mul_le_mul_of_nonneg_right hqR
-      (Nat.cast_nonneg n : (0 : ℝ) ≤ n)])
+    exact hwidth.trans (by nlinarith only [mul_le_mul_of_nonneg_left hqR (Nat.cast_nonneg n : (0 : ℝ) ≤ n)])
   have hE (a : ZMod q) : 0 ≤ E a :=
     intervalIntegral.integral_nonneg (by linarith) (fun _ _ => sq_nonneg _)
   have hc (a : ℕ) (ha : a ∈ (range (q+1)).filter (fun a => a.Coprime q)) :
@@ -338,7 +340,7 @@ theorem signedMediumDifference {n Q A : ℕ} {u η : ℝ} (hn : 2 ≤ n) (hu : 0
   exact hb.trans (by
     unfold mediumCellEnergy
     rw [mul_assoc η]
-    exact add_le_add_left (mul_le_mul_of_nonneg_left
+    exact add_le_add_right (mul_le_mul_of_nonneg_left
       (GoldbachGRHAnalytic.prime_sum_energy_le n hn) hη.le) _)
 
 end

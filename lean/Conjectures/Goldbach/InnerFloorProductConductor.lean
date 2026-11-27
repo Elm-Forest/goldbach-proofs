@@ -12,7 +12,7 @@ namespace InnerFloorResearch
 noncomputable section
 set_option maxHeartbeats 1000000
 
-theorem divisorSum_le_log (m : ℕ) (hm : 0<m) :
+theorem divisorSum_le_log (m : ℕ) (hm : 0 < m) :
     (∑ f ∈ m.divisors, (f:ℝ)) ≤ (m:ℝ)*(1+Real.log m) := by
   have hsub : m.divisors ⊆ Icc 1 m := fun d hd =>
     mem_Icc.mpr ⟨Nat.pos_of_mem_divisors hd,Nat.le_of_dvd hm (Nat.dvd_of_mem_divisors hd)⟩
@@ -45,35 +45,35 @@ variable {q : ℕ} [NeZero q]
 /-- Even when the shift is not invertible modulo q, the shifted Gauss sum
 is at most q (1+log q) / sqrt(conductor). -/
 theorem shiftedGauss_productConductor (χ : DirichletCharacter ℂ q)
-    (n : ℕ) (hn : 0<n) :
+    (n : ℕ) (hn : 0 < n) :
     ‖gaussSum χ (ZMod.stdAddChar.mulShift (-(n:ZMod q)))‖ ≤
       (q:ℝ)*(1+Real.log q)/Real.sqrt χ.conductor := by
   let d := χ.conductor
-  have hd : d∣q := χ.conductor_dvd_level
-  have hdp : 0<d := Nat.pos_of_dvd_of_pos hd (NeZero.pos q)
+  have hd : d ∣ q := χ.conductor_dvd_level
+  have hdp : 0 < d := Nat.pos_of_dvd_of_pos hd (NeZero.pos q)
   obtain ⟨m,hm⟩ := hd
-  have hmp : 0<m := by
+  have hmp : 0 < m := by
     by_contra! h
     have hm0 : m=0 := by omega
     rw [hm0,mul_zero] at hm
     exact (NeZero.ne q) hm
-  have hdR : 0<(d:ℝ) := by exact_mod_cast hdp
-  have hmR : 0<(m:ℝ) := by exact_mod_cast hmp
+  have hdR : 0 < (d:ℝ) := by exact_mod_cast hdp
+  have hmR : 0 < (m:ℝ) := by exact_mod_cast hmp
   have hqR : (q:ℝ)=(d:ℝ)*(m:ℝ) := by exact_mod_cast hm
-  have hsub : n.divisors.filter (fun f => d*f∣q) ⊆ m.divisors := by
+  have hsub : n.divisors.filter (fun f => d*f ∣ q) ⊆ m.divisors := by
     intro f hf
     have hdiv := (mem_filter.mp hf).2
     rw [hm] at hdiv
     exact Nat.mem_divisors.mpr ⟨Nat.dvd_of_mul_dvd_mul_left hdp hdiv,hmp.ne'⟩
-  have hmq : m≤q := by
+  have hmq : m ≤ q := by
     rw [hm]
     exact Nat.le_mul_of_pos_left _ hdp
   have hlog : Real.log m≤Real.log q :=
     Real.log_le_log hmR (by exact_mod_cast hmq)
   have hs : (Real.sqrt (d:ℝ))^2=(d:ℝ) := Real.sq_sqrt hdR.le
-  have hroot : 0<Real.sqrt (d:ℝ) := Real.sqrt_pos.2 hdR
+  have hroot : 0 < Real.sqrt (d:ℝ) := Real.sqrt_pos.2 hdR
   calc
-    _ ≤ Real.sqrt d*(∑ f∈n.divisors.filter (fun f => d*f∣q),(f:ℝ)) :=
+    _ ≤ Real.sqrt d*(∑ f∈n.divisors.filter (fun f => d*f ∣ q),(f:ℝ)) :=
       (norm_gauss_neg_shift_le χ (n:ZMod q)).trans
         (by simpa only [DirichletCharacter.changeLevel_self,d] using
           norm_dirichlet_gauss_induced (dvd_refl q) χ n hn)
@@ -93,8 +93,8 @@ theorem shiftedGauss_productConductor (χ : DirichletCharacter ℂ q)
 /-- The high-product-conductor part of the signed quadratic form has a
 uniform square-root saving, independent of gcd(n,q). -/
 theorem highProductConductorPacketBound
-    (n : ℕ) (hn : 0<n) (S : Finset (DirichletCharacter ℂ q))
-    (w : DirichletCharacter ℂ q → ℂ) (D : ℕ) (hD : 0<D) :
+    (n : ℕ) (hn : 0 < n) (S : Finset (DirichletCharacter ℂ q))
+    (w : DirichletCharacter ℂ q → ℂ) (D : ℕ) (hD : 0 < D) :
     ‖∑ χ∈S, ∑ ψ∈S.filter (fun ψ => D≤(χ*ψ).conductor),
        (w χ*w ψ)*gaussSum (χ*ψ) (ZMod.stdAddChar.mulShift (-(n:ZMod q)))‖ ≤
       ((q:ℝ)*(1+Real.log q)/Real.sqrt D)*(∑ χ∈S,‖w χ‖)^2 := by
