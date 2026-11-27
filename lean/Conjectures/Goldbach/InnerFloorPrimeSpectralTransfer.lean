@@ -203,7 +203,10 @@ theorem primitivePrimeEnergyWithResidual (B : ℕ) :
   change (∑ χ∈F, ∫ y in X-δ..2*X,‖zeroWindow χ ((V1 χ).V14 U) h y‖^2) ≤ _ at hz
   unfold zeroWindow at hz
   dsimp only [U] at he hz
-  linarith only [he,hz,h1,h2]
+  have hZ := hz.trans (add_le_add h1 h2)
+  have hT := he.trans (add_le_add le_rfl
+    (mul_le_mul_of_nonneg_left hZ (by norm_num : (0:ℝ) ≤ 2)))
+  exact hT.trans_eq (by ring)
 
 end
 end InnerFloorResearch

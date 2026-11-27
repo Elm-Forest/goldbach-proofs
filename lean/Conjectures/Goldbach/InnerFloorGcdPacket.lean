@@ -64,14 +64,15 @@ theorem shiftedGauss_smallProduct (χ : DirichletCharacter ℂ q) (n D : ℕ)
   have hgq : g≤q := Nat.le_of_dvd (NeZero.pos q) (hgg.trans (Nat.gcd_dvd_right _ _))
   have hgg' : g≤Nat.gcd n q := Nat.le_of_dvd (Nat.gcd_pos_of_pos_left _ hn) hgg
   have hL : 0≤Real.log g := Real.log_nonneg (by exact_mod_cast hgp)
-  have hl := Real.log_le_log (by exact_mod_cast hgp : 0 < (g:ℝ)) (by exact_mod_cast hgq)
+  have hl : Real.log (g:ℝ) ≤ Real.log (q:ℝ) :=
+    Real.log_le_log (by exact_mod_cast hgp) (by exact_mod_cast hgq)
   calc
     _ ≤ Real.sqrt χ.conductor*(g:ℝ)*(1+Real.log g) :=
       shiftedGauss_gcdBound χ n hn
     _ ≤ _ := by
       apply mul_le_mul
       · exact mul_le_mul (Real.sqrt_le_sqrt (by exact_mod_cast hD))
-          (by exact_mod_cast hgg') (Nat.cast_nonneg _) (Real.sqrt_nonneg _)
+          (by exact_mod_cast hgg' : (g:ℝ) ≤ (Nat.gcd n q:ℝ)) (Nat.cast_nonneg _) (Real.sqrt_nonneg _)
       · linarith
       · linarith
       · positivity
@@ -111,6 +112,75 @@ theorem lowProductGcdPacketBound (n : ℕ) (hn : 0 < n)
       simp_rw [← Finset.sum_mul,← Finset.mul_sum]
       rw [← Finset.sum_mul]
       ring
+
+
+/-- Interpolating the product conductor and gcd bounds eliminates the
+conductor altogether. The ratio gcd(n,q)/q is the precise obstruction. -/
+theorem shiftedGauss_geometricGcd (χ : DirichletCharacter ℂ q)
+    (n : ℕ) (hn : 0 < n) :
+    ‖gaussSum χ (ZMod.stdAddChar.mulShift (-(n:ZMod q)))‖ ≤
+      Real.sqrt ((q:ℝ)*(Nat.gcd n q:ℝ))*(1+Real.log q) := by
+  let d := χ.conductor
+  have hd : 0 < d := Nat.pos_of_dvd_of_pos χ.conductor_dvd_level (NeZero.pos q)
+  have hs : 0 < Real.sqrt (d:ℝ) := Real.sqrt_pos.2 (by exact_mod_cast hd)
+  have hL : 0 ≤ 1+Real.log q := by
+    have hq1 : (1:ℝ) ≤ q := by exact_mod_cast NeZero.pos q
+    linarith [Real.log_nonneg hq1]
+  let a := ‖gaussSum χ (ZMod.stdAddChar.mulShift (-(n:ZMod q)))‖
+  have ha : 0≤a := norm_nonneg _
+  have h₁ : a ≤ (q:ℝ)*(1+Real.log q)/Real.sqrt d :=
+    shiftedGauss_productConductor χ n hn
+  have h₂ : a ≤ Real.sqrt d*(Nat.gcd n q:ℝ)*(1+Real.log q) :=
+    shiftedGauss_smallProduct χ n d hn le_rfl
+  have hsq : a^2 ≤ ((q:ℝ)*(Nat.gcd n q:ℝ))*(1+Real.log q)^2 := by
+    calc
+      _ = a*a := by ring
+      _ ≤ ((q:ℝ)*(1+Real.log q)/Real.sqrt d)*
+          (Real.sqrt d*(Nat.gcd n q:ℝ)*(1+Real.log q)) :=
+        mul_le_mul h₁ h₂ ha (div_nonneg (mul_nonneg (Nat.cast_nonneg _) hL) hs.le)
+      _ = _ := by field_simp [hs.ne'] <;> ring
+  have hroot : (Real.sqrt ((q:ℝ)*(Nat.gcd n q:ℝ)))^2 =
+      (q:ℝ)*(Nat.gcd n q:ℝ) := Real.sq_sqrt (by positivity)
+  have hb : 0≤Real.sqrt ((q:ℝ)*(Nat.gcd n q:ℝ))*(1+Real.log q) :=
+    mul_nonneg (Real.sqrt_nonneg _) hL
+  have hsq' : a^2 ≤ (Real.sqrt ((q:ℝ)*(Nat.gcd n q:ℝ))*(1+Real.log q))^2 := by
+    rw [mul_pow,hroot]
+    exact hsq
+  change a ≤ _
+  nlinarith only [hsq',ha,hb]
+
+/-- The fraction of a modulus accounted for by gcd(n,q) cannot increase
+when q is replaced by a multiple. -/
+theorem gcdRatio_mono_multiple (n L q : ℕ) (hn : 0 < n) (hL : 0 < L)
+    (hLq : L ∣ q) (hq : 0 < q) :
+    (Nat.gcd n q:ℝ)/(q:ℝ) ≤ (Nat.gcd n L:ℝ)/(L:ℝ) := by
+  obtain ⟨m,hm⟩ := hLq
+  have hmpos : 0 < m := by
+    by_contra! h
+    have hm0 : m=0 := by omega
+    rw [hm,hm0,mul_zero] at hq
+    omega
+  let d := Nat.gcd n q
+  have hd : d ∣ L*m := by rw [← hm]; exact Nat.gcd_dvd_right _ _
+  have hsplit : d ∣ d.gcd L * d.gcd m := by
+    simpa only [Nat.gcd_comm] using (Nat.dvd_gcd_mul_gcd_iff_dvd_mul.mpr hd)
+  have h₁ : d.gcd L ∣ Nat.gcd n L :=
+    Nat.dvd_gcd ((Nat.gcd_dvd_left _ _).trans (Nat.gcd_dvd_left n q))
+      (Nat.gcd_dvd_right _ _)
+  have h₂ : d.gcd m ∣ m := Nat.gcd_dvd_right _ _
+  have hdiv : d ∣ Nat.gcd n L*m := hsplit.trans (Nat.mul_dvd_mul h₁ h₂)
+  have hle : d ≤ Nat.gcd n L*m :=
+    Nat.le_of_dvd (Nat.mul_pos (Nat.gcd_pos_of_pos_left _ hn) hmpos) hdiv
+  have hd' : (d:ℝ) ≤ (Nat.gcd n L:ℝ)*(m:ℝ) := by exact_mod_cast hle
+  have hL' : (0:ℝ) < L := by exact_mod_cast hL
+  have hq' : (0:ℝ) < q := by exact_mod_cast hq
+  have hm' : (q:ℝ)=(L:ℝ)*(m:ℝ) := by exact_mod_cast hm
+  apply (div_le_div_iff₀ hq' hL').2
+  calc
+    _ ≤ ((Nat.gcd n L:ℝ)*(m:ℝ))*(L:ℝ) :=
+      mul_le_mul_of_nonneg_right hd' hL'.le
+    _ = _ := by rw [hm']; ring
+
 
 end
 end InnerFloorResearch

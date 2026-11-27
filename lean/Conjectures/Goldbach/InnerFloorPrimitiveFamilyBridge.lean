@@ -68,10 +68,10 @@ theorem primitiveEnergy_le_analyticFamily (A : ℕ) (y h : ℝ) :
         (∑ χ∈(primitiveCharacters q).filter (fun χ => χ ≠ 1),g q χ) +
           (if q=1 then P else 0) := by
     change (∑ ψ∈primitiveCharacters q,g q ψ) ≤ _
-    letI : NeZero q := ⟨by have := (mem_Icc.mp hq).1; omega⟩
     by_cases hmem : (1:DirichletCharacter ℂ q) ∈ primitiveCharacters q
     · have hprim : (1:DirichletCharacter ℂ q).IsPrimitive := (mem_filter.mp hmem).2
       have hq1 : q=1 := by
+        letI : NeZero q := ⟨by have := (mem_Icc.mp hq).1; omega⟩
         simpa [DirichletCharacter.IsPrimitive,DirichletCharacter.conductor_one] using hprim.symm
       subst q
       have he : (primitiveCharacters 1).filter (fun χ => χ ≠ 1) =
@@ -104,7 +104,7 @@ theorem primitiveEnergy_le_analyticFamily (A : ℕ) (y h : ℝ) :
     _ ≤ _ := by
       apply add_le_add_right
       rw [sum_ite_eq']
-      split_ifs <;> positivity
+      split_ifs <;> first | exact le_rfl | exact sq_nonneg _
 
 end
 end InnerFloorResearch
