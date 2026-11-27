@@ -1,0 +1,67 @@
+name: Inner floor auxiliary kernel preflight
+on:
+  push:
+    branches: [cloud-preflight/inner-actual-taper-20261128]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.repository == 'Elm-Forest/goldbach-proofs'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - InnerFloorActualTaperRealPartsGcdVerified
+          - InnerFloorActualResidualAssemblyVerified
+          - InnerFloorDensityArithmeticAndThresholdsVerified
+          - InnerFloorOccurrenceGlueInterfaceVerified
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up pinned Lean and Mathlib
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          curl --retry 4 -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --no-modify-path --default-toolchain none
+          export PATH="$HOME/.elan/bin:$PATH"
+          elan toolchain install "$(cat lean-toolchain)"
+          lake exe cache get
+      - name: Verify exact Colab-audited candidate in kernel
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          export LEAN_NUM_THREADS=2
+          target="${{ matrix.target }}"
+          python3 - "$target" <<'PYSHA'
+          import sys, json, hashlib, pathlib
+          meta = json.loads('''{"InnerFloorActualTaperRealPartsGcdVerified": {"sha256": "da7b4bdc4d54f231b5364ebea63b003650408ec149b054869be10f4a6385b386", "count": 24, "last": "InnerFloorGaussPacket.dyadicGcdRatio_realParts_sum", "lines": 2487}, "InnerFloorActualResidualAssemblyVerified": {"sha256": "96ff11c27e2cce866b0e8f727e4f56c7ff89043a233ee513fafd9c66ac207a61", "count": 31, "last": "InnerFloorGaussPacket.actualPacketResidual", "lines": 2787}, "InnerFloorDensityArithmeticAndThresholdsVerified": {"sha256": "ab9bbce87fcfd31bc6421c8cc95f5ea64bfd5c2079316afec3c1656236ca7f40", "count": 8, "last": "InnerFloorResidualScale.aggregateBlockFloor", "lines": 172}, "InnerFloorOccurrenceGlueInterfaceVerified": {"sha256": "d69898ab3b09444cc48b3be7a3c45e5b311788060c10ef5a2e3da70353737c3e", "count": 18, "last": "InnerFloorOccurrence.denominatorResidualFloor", "lines": 752}}''')
+          t = sys.argv[1]
+          p = pathlib.Path(f"Conjectures/Goldbach/{t}.lean")
+          actual = hashlib.sha256(p.read_bytes()).hexdigest()
+          assert actual == meta[t]["sha256"], f"SHA mismatch: {actual} != {meta[t]['sha256']}"
+          print("EXACT_SHA_VERIFIED", t, actual, "lines:", meta[t]["lines"])
+          PYSHA
+          time lake env lean "Conjectures/Goldbach/$target.lean" 2>&1 | tee "/tmp/$target.log"
+          python3 - "$target" <<'PYAX'
+          import sys, pathlib, re, json
+          meta = json.loads('''{"InnerFloorActualTaperRealPartsGcdVerified": {"sha256": "da7b4bdc4d54f231b5364ebea63b003650408ec149b054869be10f4a6385b386", "count": 24, "last": "InnerFloorGaussPacket.dyadicGcdRatio_realParts_sum", "lines": 2487}, "InnerFloorActualResidualAssemblyVerified": {"sha256": "96ff11c27e2cce866b0e8f727e4f56c7ff89043a233ee513fafd9c66ac207a61", "count": 31, "last": "InnerFloorGaussPacket.actualPacketResidual", "lines": 2787}, "InnerFloorDensityArithmeticAndThresholdsVerified": {"sha256": "ab9bbce87fcfd31bc6421c8cc95f5ea64bfd5c2079316afec3c1656236ca7f40", "count": 8, "last": "InnerFloorResidualScale.aggregateBlockFloor", "lines": 172}, "InnerFloorOccurrenceGlueInterfaceVerified": {"sha256": "d69898ab3b09444cc48b3be7a3c45e5b311788060c10ef5a2e3da70353737c3e", "count": 18, "last": "InnerFloorOccurrence.denominatorResidualFloor", "lines": 752}}''')
+          t = sys.argv[1]
+          log = pathlib.Path('/tmp/' + t + '.log').read_text()
+          assert 'sorryAx' not in log and 'error:' not in log, log[-1000:]
+          matches = re.findall(r"depends on axioms: \[([^\]]*)\]", log)
+          assert len(matches) == meta[t]["count"], f"Expected {meta[t]['count']} audits, got {len(matches)}"
+          assert f"'{meta[t]['last']}' depends on axioms:" in log, f"Missing final theorem audit {meta[t]['last']}"
+          for m in matches:
+              assert set(a.strip() for a in m.split(',')) <= {'propext', 'Classical.choice', 'Quot.sound'}, m
+          print('KERNEL_AND_AXIOM_AUDIT_PASS', t, 'audits:', len(matches))
+          PYAX
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: inner-${{ matrix.target }}-log
+          path: /tmp/${{ matrix.target }}.log
