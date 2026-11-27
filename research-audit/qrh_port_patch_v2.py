@@ -120,3 +120,44 @@ p=root/'OAI/NumberTheory/DirichletL/Mellin/LogProfiles.lean'
 s=p.read_text()
 s=s.replace('theorem uniform_fourier_coefficient_moment', 'set_option maxHeartbeats 20000000 in\ntheorem uniform_fourier_coefficient_moment',1)
 p.write_text(s)
+
+# Round six: eliminate numeral-driven kernel recursion and annotate the AE transport.
+edit('OAI/NumberTheory/DirichletL/ChineseRemainder/AdditiveCharacters.lean',[
+ ('induction n using Nat.strong_induction_on with\n    | h n ih =>',
+  'induction n using Nat.strong_induction_on with\n    | ind n ih =>'),
+ ("""  have h3001 := hbound 3001
+  have hpow : z ^ 3000 < z ^ 3001 := by
+    calc
+      z ^ 3000 = z ^ 3000 * 1 := by ring
+      _ < z ^ 3000 * z :=
+        mul_lt_mul_of_pos_left hz (pow_pos hz0 _)
+      _ = z ^ 3001 := by ring
+  have hlt : K 3001 * z ^ 3001 < z ^ 3001 :=
+    lt_of_le_of_lt (h3001.trans hK0) hpow
+  by_contra h
+  have hge : 1 ≤ K 3001 := le_of_not_gt h
+  nlinarith [mul_nonneg (sub_nonneg.mpr hge)
+    (le_of_lt (pow_pos hz0 3001))]""",
+ """  have finish (n : ℕ) (hn : K 0 ≤ z ^ n) : K (n+1) < 1 := by
+    have hpow : z ^ n < z ^ (n+1) := by
+      rw [pow_succ]
+      simpa only [mul_one] using
+        (mul_lt_mul_of_pos_left hz (pow_pos hz0 n))
+    have hlt : K (n+1) * z ^ (n+1) < z ^ (n+1) :=
+      lt_of_le_of_lt ((hbound (n+1)).trans hn) hpow
+    by_contra h
+    have hge : 1 ≤ K (n+1) := le_of_not_gt h
+    have hbad := mul_le_mul_of_nonneg_right hge (le_of_lt (pow_pos hz0 (n+1)))
+    rw [one_mul] at hbad
+    exact (not_lt_of_ge hbad) hlt
+  exact finish 3000 hK0""")
+])
+edit('RellichKondrachov/Analysis/FunctionalSpaces/Sobolev/Euclidean/L2Compactness/Approximation.lean',[
+ ('lemma norm_sq_smoothL2_sub_extendByZeroL2_le_integral_norm_sq_translateL2_sub_extendByZeroL2',
+  'set_option maxHeartbeats 30000000 in\nlemma norm_sq_smoothL2_sub_extendByZeroL2_le_integral_norm_sq_translateL2_sub_extendByZeroL2'),
+ ('    exact hv_sq.congr (hSF_ae.pow_const 2)',
+  """    have hAE_sq : (fun x : E => ((S - F : E →₂[(volume : Measure E)] ℝ) x) ^ 2)
+        =ᵐ[(volume : Measure E)] (fun x : E =>
+          (smoothFun (E := E) (K := K) ψ u x - f x) ^ 2) := hSF_ae.pow_const 2
+    exact hv_sq.congr hAE_sq""")
+])
