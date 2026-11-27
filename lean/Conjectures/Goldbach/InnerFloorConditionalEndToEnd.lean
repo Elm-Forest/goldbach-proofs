@@ -74,13 +74,13 @@ theorem middleCellEnergySmall_of_uniformStrip {σ : ℝ} (hσ : σ < 1)
       (hAupper.trans ((Real.rpow_le_rpow_of_exponent_le hnR
         (by norm_num : (1/5:ℝ) ≤ 4/5)).trans hhlo))
     have h3h : 3*h ≤ n := by
-      apply Nat.cast_le.mp
-      push_cast
-      calc
-        _ ≤ 3*(n:ℝ)^(99/100:ℝ) := mul_le_mul_of_nonneg_left hhcap (by norm_num)
-        _ ≤ (n:ℝ)^(1/100:ℝ)*(n:ℝ)^(99/100:ℝ) :=
-          mul_le_mul_of_nonneg_right hp (Real.rpow_nonneg hnP.le _)
-        _ = _ := by rw [← Real.rpow_add hnP]; norm_num
+      have hreal : (3:ℝ)*(h:ℝ) ≤ (n:ℝ) := by
+        calc
+          _ ≤ 3*(n:ℝ)^(99/100:ℝ) := mul_le_mul_of_nonneg_left hhcap (by norm_num)
+          _ ≤ (n:ℝ)^(1/100:ℝ)*(n:ℝ)^(99/100:ℝ) :=
+            mul_le_mul_of_nonneg_right hp (Real.rpow_nonneg hnP.le (99/100:ℝ))
+          _ = _ := by rw [← Real.rpow_add hnP]; norm_num
+      exact_mod_cast hreal
     have hAn : A ≤ n := by omega
     let N := n+1-h
     have hN : N ≤ n := by dsimp [N]; omega
@@ -136,7 +136,9 @@ theorem middleCellEnergySmall_of_uniformStrip {σ : ℝ} (hσ : σ < 1)
             ((2*h+2*h:ℕ):ℝ)*boundaryWindowBudget A n h)/(h:ℝ)^2 :=
           (le_div_iff₀ (sq_pos_of_pos hhR)).2 (by simpa only [mul_comm] using hcell)
         _ = _ := by ring
-    exact hnorm.trans (by linarith only [hbulkSmall,hbd])
+    change 4*((2*h+2*h:ℕ):ℝ)*boundaryWindowBudget A n h/(h:ℝ)^2 ≤
+      (2/5:ℝ)*(n:ℝ)/L^4 at hbd
+    exact hnorm.trans ((add_le_add hbulkSmall hbd).trans_eq (by ring))
   have H := mediumCellEnergy_of_fixed_bounds n (innerWidth n)
     ((4/5:ℝ)*(n:ℝ)/L^4) (by omega) hQ hQA hbands
   exact H.trans_eq (by ring)
