@@ -79,7 +79,7 @@ theorem centeredIntervalEnergy_le (a : ℤ → ℂ) (M : ℤ) (N q : ℕ)
         2*(N:ℝ)^2*(∑ u : (ZMod q)ˣ, ‖additiveModel q (u:ZMod q)‖^2) := by
       rw [sum_add_distrib,← mul_sum,← mul_sum]
     _ ≤ _ := by
-      rw [← mul_div_assoc]
+      rw [mul_div_assoc]
       exact add_le_add_right (mul_le_mul_of_nonneg_left (sum_unitModelEnergy q) (by positivity)) _
 
 /-- For any interval of N terms, the total centered reduced numerator

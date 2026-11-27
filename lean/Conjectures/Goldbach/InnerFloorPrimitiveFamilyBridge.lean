@@ -45,8 +45,12 @@ theorem sum_analyticPrimitiveFamily (A : ℕ)
   unfold analyticPrimitiveFamily
   rw [Finset.sum_map]
   change (∑ p∈(indexedNonprincipal A).attach,g p.val.1 p.val.2) = _
-  rw [Finset.sum_attach]
-  exact Finset.sum_sigma _ _ _
+  calc
+    _ = ∑ p∈indexedNonprincipal A,g p.1 p.2 :=
+      Finset.sum_attach (indexedNonprincipal A) (fun p => g p.1 p.2)
+    _ = _ := by
+      unfold indexedNonprincipal
+      rw [Finset.sum_sigma]
 
 /-- On every window, the primitive arithmetic energy is the sum of the
 nonprincipal analytic family plus at most the single modulus-one term. -/
@@ -63,7 +67,8 @@ theorem primitiveEnergy_le_analyticFamily (A : ℕ) (y h : ℝ) :
       primitivePrimeWindowEnergy q y h ≤
         (∑ χ∈(primitiveCharacters q).filter (fun χ => χ ≠ 1),g q χ) +
           (if q=1 then P else 0) := by
-    unfold primitivePrimeWindowEnergy
+    change (∑ ψ∈primitiveCharacters q,g q ψ) ≤ _
+    letI : NeZero q := ⟨by have := (mem_Icc.mp hq).1; omega⟩
     by_cases hmem : (1:DirichletCharacter ℂ q) ∈ primitiveCharacters q
     · have hprim : (1:DirichletCharacter ℂ q).IsPrimitive := (mem_filter.mp hmem).2
       have hq1 : q=1 := by
@@ -71,14 +76,23 @@ theorem primitiveEnergy_le_analyticFamily (A : ℕ) (y h : ℝ) :
       subst q
       have he : (primitiveCharacters 1).filter (fun χ => χ ≠ 1) =
           (primitiveCharacters 1).erase 1 := by ext χ; simp [and_comm]
-      rw [he,if_pos rfl]
-      exact (sum_erase_add _ _ hmem).symm.le
+      rw [if_pos rfl]
+      have hsum : (∑ χ∈(primitiveCharacters 1).filter (fun χ => χ ≠ 1),g 1 χ) =
+          ∑ χ∈(primitiveCharacters 1).erase 1,g 1 χ :=
+        congrArg (fun S : Finset (DirichletCharacter ℂ 1) => ∑ χ∈S,g 1 χ) he
+      calc
+        _ = (∑ χ∈(primitiveCharacters 1).erase 1,g 1 χ)+P := by
+          exact (sum_erase_add _ _ hmem).symm
+        _ ≤ _ := by rw [hsum]
     · have he : (primitiveCharacters q).filter (fun χ => χ ≠ 1) =
           primitiveCharacters q := by
         ext χ
         simp only [mem_filter]
         exact ⟨fun h => h.1,fun h => ⟨h,fun hc => hmem (hc ▸ h)⟩⟩
-      rw [he]
+      have hsum : (∑ χ∈(primitiveCharacters q).filter (fun χ => χ ≠ 1),g q χ) =
+          ∑ χ∈primitiveCharacters q,g q χ :=
+        congrArg (fun S : Finset (DirichletCharacter ℂ q) => ∑ χ∈S,g q χ) he
+      rw [hsum]
       apply le_add_of_nonneg_right
       split_ifs <;> positivity
   calc
@@ -88,7 +102,7 @@ theorem primitiveEnergy_le_analyticFamily (A : ℕ) (y h : ℝ) :
     _ = (∑ q∈Icc 1 A, ∑ χ∈(primitiveCharacters q).filter (fun χ => χ ≠ 1),g q χ) +
         (∑ q∈Icc 1 A, if q=1 then P else 0) := sum_add_distrib
     _ ≤ _ := by
-      apply add_le_add_left
+      apply add_le_add_right
       rw [sum_ite_eq']
       split_ifs <;> positivity
 
