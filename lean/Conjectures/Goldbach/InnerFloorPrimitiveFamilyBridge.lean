@@ -83,7 +83,7 @@ theorem primitiveEnergy_le_analyticFamily (A : ℕ) (y h : ℝ) :
       calc
         _ = (∑ χ∈(primitiveCharacters 1).erase 1,g 1 χ)+P := by
           exact (sum_erase_add _ _ hmem).symm
-        _ ≤ _ := by rw [hsum]
+        _ ≤ _ := add_le_add hsum.symm.le le_rfl
     · have he : (primitiveCharacters q).filter (fun χ => χ ≠ 1) =
           primitiveCharacters q := by
         ext χ
