@@ -107,6 +107,96 @@ theorem rightStripAllHeights (B : ℕ) :
       mul_le_mul_of_nonneg_left (sum_le_sum hblock) (by positivity)
     _ = _ := by simp only [sum_const, card_range, nsmul_eq_mul]; ring
 
+/-- Sum all the dyadic bands in the strip 1/2 ≤ Re ρ ≤ 1 - V2j (B+4) X.
+The loss is at most (K+1)^2, for U=2^(K+1). -/
+theorem goodZerosAllHeights (B : ℕ) :
+    ∃ C : ℝ, 0 < C ∧ ∃ X₀ : ℝ, 1 ≤ X₀ ∧
+      ∀ (Q K : ℕ) (X h : ℝ),
+      1 ≤ Q → X₀ ≤ X → 0 < h → h ≤ X →
+      (Q : ℝ)^2/(h/X) ≤ X^(5/12 : ℝ) →
+      Real.log ((Q : ℝ)*(2 : ℝ)^(K+1)) ≤ 2*Real.log X →
+      ∀ F : Finset PrimitiveComplexCharacter,
+      (∀ χ ∈ F, χ.modulus ≤ Q) →
+      ∀ S : PrimitiveComplexCharacter → Finset ℕ,
+      (∀ χ ∈ F, S χ ⊆ (V1 χ).V14 ((2 : ℝ)^(K+1))) →
+      (∀ χ ∈ F, ∀ i ∈ S χ, 1/2 ≤ ((V1 χ).zeros i).re ∧
+        ((V1 χ).zeros i).re ≤ 1 - V1l.V2j (B+4) X) →
+      (∑ χ ∈ F, ∫ y in X..2*X, ‖zeroWindow χ (S χ) h y‖^2) ≤
+        C*((K+1 : ℕ):ℝ)^2*h^2*X/(Real.log X)^B := by
+  obtain ⟨C₁,hC₁,X₁,h₁⟩ := V93.Vz7 B
+  obtain ⟨C₂,hC₂,X₂,h₂⟩ := V93.V1ep B
+  let C := max C₁ C₂
+  refine ⟨C, hC₁.trans_le (le_max_left ..), max (max X₁ X₂) 2,
+    by linarith [le_max_right (max X₁ X₂) (2:ℝ)], ?_⟩
+  intro Q K X h hQ hX hh hhX hscale hlog F hF S hS hstrip
+  have hX1 := (le_max_left X₁ X₂).trans ((le_max_left _ _).trans hX)
+  have hX2 := (le_max_right X₁ X₂).trans ((le_max_left _ _).trans hX)
+  have hXp : 0 < X := by linarith [(le_max_right (max X₁ X₂) (2:ℝ)).trans hX]
+  have hXge : 2 ≤ X := (le_max_right _ _).trans hX
+  have hL : 0 < Real.log X := Real.log_pos (by linarith)
+  let P (k : ℕ) (χ : PrimitiveComplexCharacter) :=
+    Vpt (S χ) (fun i => ((V1 χ).zeros i).im) k
+  have hpart (χ : PrimitiveComplexCharacter) (hχ : χ ∈ F) (y : ℝ) :
+      zeroWindow χ (S χ) h y =
+        ∑ k ∈ range (K+1), zeroWindow χ (P k χ) h y := by
+    unfold zeroWindow
+    apply V9u
+    intro i hi
+    exact (ComplexZeroEnumeration.V2r _ _ _).mp (hS χ hχ hi)
+  have hpow (k : ℕ) (hk : k ∈ range (K+1)) :
+      (2 : ℝ)^(k+1) ≤ 2^(K+1) :=
+    pow_le_pow_right₀ (by norm_num) (by have := mem_range.mp hk; omega)
+  have hT (k : ℕ) : (2 : ℝ) ≤ 2^(k+1) := by
+    simpa only [pow_one] using
+      (pow_le_pow_right₀ (by norm_num : (1:ℝ) ≤ 2) (show 1 ≤ k+1 by omega))
+  have hlogk (k : ℕ) (hk : k ∈ range (K+1)) :
+      Real.log ((Q : ℝ)*2^(k+1)) ≤ 2*Real.log X := by
+    apply le_trans _ hlog
+    apply Real.log_le_log (by positivity)
+    exact mul_le_mul_of_nonneg_left (hpow k hk) (Nat.cast_nonneg _)
+  have hblock (k : ℕ) (hk : k ∈ range (K+1)) :
+      (∑ χ ∈ F, ∫ y in X..2*X, ‖zeroWindow χ (P k χ) h y‖^2) ≤
+        C*h^2*X/(Real.log X)^B := by
+    by_cases hk0 : k = 0
+    · subst k
+      have h := h₂ Q hQ X h hX2 hh hhX hscale
+        (by simpa using hlogk 0 hk) F hF (P 0)
+        (by
+          intro χ hχ i hi
+          obtain ⟨hiS,hiT,_⟩ := mem_filter.mp hi
+          exact mem_filter.mpr ⟨(ComplexZeroEnumeration.V2r _ _ _).mpr
+            (by simpa using hiT),hstrip χ hχ i hiS⟩)
+      exact h.trans (by dsimp [C]; gcongr)
+    · have h := h₁ Q hQ X h ((2:ℝ)^(k+1)) hX1 (hT k) hh hhX hscale
+        (hlogk k hk) F hF (P k)
+        (by
+          intro χ hχ i hi
+          obtain ⟨hiS,hiT,hiL⟩ := mem_filter.mp hi
+          have hL' := hiL.resolve_left hk0
+          have he : (2:ℝ)^(k+1)/2 = 2^k := by rw [pow_succ]; ring
+          exact mem_filter.mpr ⟨(ComplexZeroEnumeration.V2r _ _ _).mpr hiT,
+            (hstrip χ hχ i hiS).1,(hstrip χ hχ i hiS).2,by rw [he]; exact hL'.le⟩)
+      exact h.trans (by dsimp [C]; gcongr)
+  have hterm (χ : PrimitiveComplexCharacter) (hχ : χ ∈ F) :
+      (∫ y in X..2*X, ‖zeroWindow χ (S χ) h y‖^2) ≤
+        ((K+1 : ℕ):ℝ)*(∑ k ∈ range (K+1),
+          ∫ y in X..2*X, ‖zeroWindow χ (P k χ) h y‖^2) := by
+    simp_rw [hpart χ hχ]
+    simpa only [card_range] using
+      (V1dr (range (K+1)) (fun k y => zeroWindow χ (P k χ) h y) X hXp.le
+        (fun k _ => ContinuousOn.intervalIntegrable_of_Icc (by linarith)
+          ((V6e (P k χ) (V1 χ).zeros X h hXp hh.le hhX).norm.pow 2)))
+  calc
+    _ ≤ ∑ χ ∈ F, ((K+1 : ℕ):ℝ)*(∑ k ∈ range (K+1),
+          ∫ y in X..2*X, ‖zeroWindow χ (P k χ) h y‖^2) :=
+      sum_le_sum hterm
+    _ = ((K+1 : ℕ):ℝ)*(∑ k ∈ range (K+1), ∑ χ ∈ F,
+          ∫ y in X..2*X, ‖zeroWindow χ (P k χ) h y‖^2) := by
+      rw [← mul_sum, sum_comm]
+    _ ≤ ((K+1 : ℕ):ℝ)*(∑ _k ∈ range (K+1), C*h^2*X/(Real.log X)^B) :=
+      mul_le_mul_of_nonneg_left (sum_le_sum hblock) (by positivity)
+    _ = _ := by simp only [sum_const, card_range, nsmul_eq_mul]; ring
+
 /-- Moving-average smoothing does not increase energy beyond the
 slightly enlarged physical interval. -/
 theorem smoothedWindowEnergy

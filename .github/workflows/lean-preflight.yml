@@ -28,5 +28,5 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.elan/bin:$PATH"
           lake env lean Conjectures/Goldbach/InnerFloorDensityBudget.lean
-          lake build Conjectures.Goldbach.InnerFloorGoodZeroAssembly
-          echo "PREFLIGHT PASS: all-height zero-window assembly and smoothing"
+          lake build Conjectures.Goldbach.InnerFloorGoodZeroAssembly Conjectures.Goldbach.InnerFloorNearOneSparsity
+          echo "PREFLIGHT PASS: dynamic cutoff zero-window assembly, smoothing, and sparse bad spectrum"
