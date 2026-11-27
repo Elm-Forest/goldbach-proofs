@@ -34,7 +34,7 @@ theorem badSpectrumHeightSplit
     unfold zeroWindow lowHeightBad highHeightBad
     simpa only [not_lt] using (Finset.sum_filter_add_sum_filter_not
       (rightBadIndices χ U c) (fun i => |((V1 χ).zeros i).im| < T)
-      (fun i => Ve y h ((V1 χ).zeros i))).symm
+      (fun i => Ve y h ((V1 χ).zeros i)))
   have hi (χ : PrimitiveComplexCharacter) (i : ℕ) :
       IntervalIntegrable (fun y => ‖f χ i y‖^2) volume X (2*X) := by
     unfold f

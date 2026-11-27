@@ -202,6 +202,7 @@ theorem primitivePrimeEnergyWithResidual (B : ℕ) :
   dsimp only at h1 h2
   change (∑ χ∈F, ∫ y in X-δ..2*X,‖zeroWindow χ ((V1 χ).V14 U) h y‖^2) ≤ _ at hz
   unfold zeroWindow at hz
+  dsimp only [U] at he hz
   linarith only [he,hz,h1,h2]
 
 end
