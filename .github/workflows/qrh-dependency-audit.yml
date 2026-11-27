@@ -1,0 +1,74 @@
+name: QRH independent dependency audit
+on:
+  push:
+    branches: [cloud-preflight/qrh-audit-20261128]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.repository == 'Elm-Forest/goldbach-proofs'
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [original, goldbach-port]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Retrieve exact public proof source
+        run: |
+          set -euxo pipefail
+          git clone --no-checkout https://github.com/Zhang-Liao/quasi-riemann.git /tmp/qrh
+          git -C /tmp/qrh checkout --detach 8bcf392d0ddc241a87fc8c3371273af704638f9b
+          git -C /tmp/qrh rev-parse HEAD
+          cp research-audit/QRH_AuditCone.lean /tmp/qrh/AuditCone.lean
+          cat /tmp/qrh/verification/result.json
+          cat /tmp/qrh/verification/axioms.log
+          du -sh /tmp/qrh
+      - name: Install toolchain and Mathlib
+        env:
+          MODE: ${{ matrix.mode }}
+        run: |
+          set -euxo pipefail
+          cd /tmp/qrh
+          curl --retry 4 -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --no-modify-path --default-toolchain none
+          export PATH="$HOME/.elan/bin:$PATH"
+          if [ "$MODE" = goldbach-port ]; then
+            printf '%s\n' leanprover/lean4:v4.36.0 > lean-toolchain
+            sed -i 's/d13f23b723b8a846827a245b89c10fc7d3f11612/fc4f59e577feb1a4956671bc04ac18aaaf8cd842/g' lakefile.lean
+            rm lake-manifest.json
+            elan toolchain install "$(cat lean-toolchain)"
+            lake update
+          else
+            elan toolchain install "$(cat lean-toolchain)"
+          fi
+          lean --version
+          time lake exe cache get
+          nproc; free -h; df -h .
+      - name: Independent kernel build and axiom audit
+        run: |
+          set -euxo pipefail
+          cd /tmp/qrh
+          export PATH="$HOME/.elan/bin:$PATH"
+          export LEAN_NUM_THREADS=4
+          time lake build QuasiRiemann 2>&1 | tee build-independent.log
+          lake env lean CheckAxioms.lean | tee axioms-independent.log
+      - name: Actual declaration dependency cone
+        run: |
+          set -euxo pipefail
+          cd /tmp/qrh
+          export PATH="$HOME/.elan/bin:$PATH"
+          lake env lean AuditCone.lean | tee cone-independent.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qrh-audit-${{ matrix.mode }}
+          path: |
+            /tmp/qrh/build-independent.log
+            /tmp/qrh/axioms-independent.log
+            /tmp/qrh/cone-independent.log
+            /tmp/qrh/proof-dependency-cone.txt
+          if-no-files-found: ignore
