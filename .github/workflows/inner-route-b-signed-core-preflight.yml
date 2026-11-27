@@ -1,0 +1,59 @@
+name: Inner floor Route B complete suite preflight
+on:
+  push:
+    branches: [cloud-preflight/inner-route-b-signed-core-20261128]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.repository == 'Elm-Forest/goldbach-proofs'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [InnerFloorRouteBSignedCoreVerified, InnerFloorRouteBResearchThresholdVerified, InnerFloorRouteBAlmostAllVerified]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up pinned Lean and Mathlib
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          curl --retry 4 -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --no-modify-path --default-toolchain none
+          export PATH="$HOME/.elan/bin:$PATH"
+          elan toolchain install "$(cat lean-toolchain)"
+          lake exe cache get
+      - name: Verify exact candidate in kernel
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          export LEAN_NUM_THREADS=2
+          target="${{ matrix.target }}"
+          case "$target" in
+            InnerFloorRouteBSignedCoreVerified) echo "11b6a92a50cb9d9f0cb143cb53831cd78230436c2cc000114eaff935260994a5  Conjectures/Goldbach/$target.lean" | sha256sum -c - ;;
+            InnerFloorRouteBResearchThresholdVerified) echo "4bfe459f8572140982e14963c4d040958b6c69f0822a875a1c8114a4717c91b1  Conjectures/Goldbach/$target.lean" | sha256sum -c - ;;
+            InnerFloorRouteBAlmostAllVerified) echo "b5791e5bb4df171f4c0dd07d0a66a6aaf4843faefff89e3179a9be4fd306d606  Conjectures/Goldbach/$target.lean" | sha256sum -c - ;;
+            *) exit 2 ;;
+          esac
+          time lake env lean "Conjectures/Goldbach/$target.lean" 2>&1 | tee "/tmp/$target.log"
+          python3 - "$target" <<'PYAX'
+          import sys,pathlib,re
+          t=sys.argv[1]
+          log=pathlib.Path('/tmp/'+t+'.log').read_text()
+          assert 'sorryAx' not in log and 'error:' not in log
+          matches=re.findall(r"depends on axioms: \[([^\]]*)\]",log)
+          expected={'InnerFloorRouteBSignedCoreVerified': 5, 'InnerFloorRouteBResearchThresholdVerified': 5, 'InnerFloorRouteBAlmostAllVerified': 4}
+          assert len(matches)==expected[t],log[-1000:]
+          for m in matches:
+              assert set(a.strip() for a in m.split(',')) <= {'propext','Classical.choice','Quot.sound'},m
+          print('KERNEL_AND_AXIOM_AUDIT_PASS',t)
+          PYAX
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: inner-${{ matrix.target }}-log
+          path: /tmp/${{ matrix.target }}.log
