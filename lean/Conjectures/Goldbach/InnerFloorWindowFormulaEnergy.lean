@@ -8,7 +8,7 @@ This connects the analytic formula to an actual arithmetic-window L² bound.
 
 open Finset MeasureTheory
 open scoped Interval Classical
-open OAI.Ostmann V1e V6i
+open OAI.Ostmann V1e V6i V7e
 namespace InnerFloorResearch
 noncomputable section
 set_option maxHeartbeats 1000000
@@ -42,7 +42,13 @@ theorem windowFormulaEnergy (g f : ℝ → ℂ) {X δ E : ℝ}
       rw [add_sub_cancel_right] at h
       linarith [hres y hy]
     have hsq := pow_le_pow_left₀ (norm_nonneg _) hnorm 2
-    nlinarith [sq_nonneg (E-‖V3q f δ y‖)]
+    have hs' : (E + ‖V3q f δ y‖)^2 ≤ 2*E^2+2*‖V3q f δ y‖^2 := by
+      nlinarith [sq_nonneg (E-‖V3q f δ y‖)]
+    refine hsq.trans (hs'.trans ?_)
+    calc
+      _ ≤ 2*E^2+2*((1/δ)*(∫ u in y-δ..y, ‖f u‖^2)) :=
+        add_le_add_left (mul_le_mul_of_nonneg_left hn (by norm_num : (0:ℝ)≤2)) _
+      _ = _ := by ring
   have hi : (∫ y in X..2*X, ‖g y‖^2) ≤
       ∫ y in X..2*X, 2*E^2 + (2/δ)*(∫ u in y-δ..y, ‖f u‖^2) := by
     rw [intervalIntegral.integral_of_le hXX,intervalIntegral.integral_of_le hXX]
@@ -56,7 +62,7 @@ theorem windowFormulaEnergy (g f : ℝ → ℂ) {X δ E : ℝ}
   calc
     _ ≤ (2*X-X)*(2*E^2)+(2/δ)*(∫ y in X..2*X,∫ u in y-δ..y,‖f u‖^2) := hi
     _ ≤ (2*X-X)*(2*E^2)+(2/δ)*(δ*(∫ u in X-δ..2*X,‖f u‖^2)) :=
-      add_le_add_left (mul_le_mul_of_nonneg_left hFubini (by positivity)) _
+      add_le_add_left (mul_le_mul_of_nonneg_left hFubini (by positivity : 0≤(2:ℝ)/δ)) _
     _ = _ := by field_simp; ring
 
 /-- The actual nonprincipal von Mangoldt short-window family is bounded by
@@ -101,8 +107,9 @@ theorem primitiveWindowEnergyFromZeros :
       have hp : y+(h:ℝ) ≠ 0 := by linarith [hy.1,Nat.cast_nonneg h]
       have hc : ContinuousAt (fun t:ℝ => t+(h:ℝ)) y :=
         (continuous_id.add continuous_const).continuousAt
-      exact ((Complex.continuousAt_ofReal_cpow_const (y+(h:ℝ))
-        ((V1 χ).zeros i) (Or.inr hp)).comp hc).continuousWithinAt
+      have hcomp := (Complex.continuousAt_ofReal_cpow_const (y+(h:ℝ))
+        ((V1 χ).zeros i) (Or.inr hp)).comp hc
+      exact hcomp.continuousWithinAt
     · intro y hy
       exact (Complex.continuousAt_ofReal_cpow_const y ((V1 χ).zeros i)
         (Or.inr (by linarith [hy.1] : y≠0))).continuousWithinAt

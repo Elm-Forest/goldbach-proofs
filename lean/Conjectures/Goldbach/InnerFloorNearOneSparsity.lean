@@ -83,7 +83,7 @@ theorem nearOneOccurrencesCard (A : ℕ) :
         rw [← Real.rpow_natCast, Real.rpow_def_of_pos hXp, Real.rpow_def_of_pos hLp]
         congr 1
         dsimp [δ,L,V2j]
-        field_simp [ne_of_gt hLp]
+        field_simp [ne_of_gt hLp, show Real.log X ≠ 0 from ne_of_gt hLp]
         push_cast
         <;> ring
   have hlog0 : 0≤Real.log ((Q:ℝ)*T) := Real.log_nonneg (one_le_mul_of_one_le_of_one_le hq (by linarith))

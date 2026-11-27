@@ -1,10 +1,13 @@
-name: Lean preflight (conductor-sensitive projection)
+name: Goldbach incremental research preflight
 on:
   push:
-    branches:
-      - cloud-preflight/inner-window-energy-20261127
+    branches: [cloud-preflight/inner-incremental-20261127]
+  workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: goldbach-inner-incremental
+  cancel-in-progress: false
 jobs:
   compile:
     if: github.repository == 'Elm-Forest/goldbach-proofs'
@@ -14,19 +17,45 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Lean and Mathlib
+      - name: Restore community build objects
+        id: community
+        uses: actions/cache/restore@v4
+        with:
+          path: lean/.lake/build
+          key: inner-community-linux-x64-1fe24b28-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-${{ github.run_id }}
+          restore-keys: |
+            inner-community-linux-x64-1fe24b28-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-
+      - name: Install pinned Lean and Mathlib
         working-directory: lean
         run: |
           set -euo pipefail
           curl --retry 4 -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --no-modify-path --default-toolchain none
           export PATH="$HOME/.elan/bin:$PATH"
-          elan toolchain install "$(cat lean-toolchain)"
-          lake exe cache get
-      - name: Build verified imports and research helper
+          time elan toolchain install "$(cat lean-toolchain)"
+          time lake exe cache get
+          nproc
+          free -h
+          df -h .
+          du -sh .lake/build .lake/packages || true
+      - name: Compile unchanged verified dependencies
+        id: deps
         working-directory: lean
         run: |
           set -euo pipefail
           export PATH="$HOME/.elan/bin:$PATH"
-          lake env lean Conjectures/Goldbach/InnerFloorDensityBudget.lean
-          lake build Conjectures.Goldbach.InnerFloorGoodZeroAssembly Conjectures.Goldbach.InnerFloorNearOneSparsity Conjectures.Goldbach.InnerFloorHighBadZeros Conjectures.Goldbach.InnerFloorWindowFormulaEnergy
-          echo "PREFLIGHT PASS: primitive window energy and exceptional-zero localization"
+          time lake build Conjectures.Goldbach.DyadicCellShortPrimeFloor Conjectures.Goldbach.ShortProgressionsMeanTheta Conjectures.Goldbach.ReflectionCharacterContraction PEqualNP.Outside.L_goldbach_frontier_type2_b1_b4
+          du -sh .lake/build
+      - name: Persist successful dependencies before testing candidates
+        if: steps.deps.outcome == 'success' && steps.community.outputs.cache-matched-key == ''
+        uses: actions/cache/save@v4
+        with:
+          path: lean/.lake/build
+          key: ${{ steps.community.outputs.cache-primary-key }}
+      - name: Test current Lean candidates
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          time lake env lean Conjectures/Goldbach/InnerFloorDensityBudget.lean
+          time lake build Conjectures.Goldbach.InnerFloorGoodZeroAssembly Conjectures.Goldbach.InnerFloorNearOneSparsity Conjectures.Goldbach.InnerFloorHighBadZeros Conjectures.Goldbach.InnerFloorWindowFormulaEnergy Conjectures.Goldbach.InnerFloorSignedSparsePacket Conjectures.Goldbach.InnerFloorConductorLift Conjectures.Goldbach.InnerFloorPhysicalL2
+          echo "PREFLIGHT PASS"
