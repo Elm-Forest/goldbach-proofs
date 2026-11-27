@@ -49,6 +49,7 @@ theorem fullSpectrumEnergy_of_uniformStrip {σ : ℝ} (hσ : σ < 1)
     unfold zeroFamilyEnergy
     apply sum_eq_zero
     intro χ _
+    dsimp only
     rw [hX₂ X ((le_max_right X₁ X₂).trans hX) χ ((2:ℝ)^(K+1))]
     simp [zeroWindow]
   rw [hz,mul_zero,add_zero] at hb

@@ -33,7 +33,7 @@ def FrozenWideRemainderInnerFloor : Prop :=
 model error. It is not the earlier overstrong all-residue variance. -/
 def MiddleCellEnergySmall : Prop := ∀ᶠ n : ℕ in atTop,
   mediumCellEnergy n (innerCutoff n) (middleCutoff n) (innerWidth n) ≤
-    8*(n:ℝ)/(Real.log (n:ℝ))^8
+    8*(n:ℝ)/(Real.log (n:ℝ))^4
 
 private theorem mediumIntegral_split {n Q A B : ℕ} {u : ℝ}
     (hn : 0 < n) (hu : 0 ≤ u) (hQA : Q ≤ A) (hAB : A ≤ B)
@@ -101,21 +101,20 @@ private theorem signedDifferenceSmall (hEnergy : MiddleCellEnergySmall) (ε : �
   have hun : u ≤ (n : ℝ) := by
     have hA1 : (1 : ℝ) ≤ A := by exact_mod_cast hQ.trans hQA
     nlinarith only [hsep, mul_le_mul_of_nonneg_left hA1 hu, hu]
-  have hE : mediumCellEnergy n Q A u ≤ 8*(n : ℝ)/L^8 := hv
-  have H := signedMediumDifference hn hu hsep (show 0 < 1/L^3 by positivity)
+  have hE : mediumCellEnergy n Q A u ≤ 8*(n : ℝ)/L^4 := hv
+  have H := signedMediumDifference (Q := Q) hn hu hsep (show 0 < 1/L^3 by positivity)
   change ‖_‖ ≤ (1+1/(1/L^3))*mediumCellEnergy n Q A u + (1/L^3)*((n : ℝ)+1)*L^2 at H
   calc
     _ ≤ _ := H
-    _ ≤ (1+1/(1/L^3))*(8*(n : ℝ)/L^8) + (1/L^3)*((n : ℝ)+1)*L^2 := by gcongr
+    _ ≤ (1+1/(1/L^3))*(8*(n : ℝ)/L^4) + (1/L^3)*((n : ℝ)+1)*L^2 := by gcongr
     _ ≤ 18*(n : ℝ)/L := by
       have h3 : 1 ≤ L^3 := one_le_pow₀ hL1
-      have h7 : L^3 ≤ L^7 := pow_le_pow_right₀ hL1 (by decide)
-      have ha : (1+L^3)*(8*(n : ℝ)) ≤ (16*(n : ℝ))*L^7 := by
-        nlinarith only [mul_le_mul_of_nonneg_right h3 (by positivity : 0 ≤ (n : ℝ)),
-          mul_le_mul_of_nonneg_right h7 (by positivity : 0 ≤ (n : ℝ))]
-      have hb : (1+1/(1/L^3))*(8*(n : ℝ)/L^8) ≤ 16*(n : ℝ)/L := by
-        rw [one_div_one_div, ← mul_div_assoc, div_le_div_iff₀ (by positivity) hL0]
-        convert mul_le_mul_of_nonneg_right ha hL0.le using 1 <;> ring
+      have hb : (1+1/(1/L^3))*(8*(n : ℝ)/L^4) ≤ 16*(n : ℝ)/L := by
+        rw [one_div_one_div]
+        calc
+          _ ≤ (2*L^3)*(8*(n:ℝ)/L^4) :=
+            mul_le_mul_of_nonneg_right (by linarith) (by positivity)
+          _ = _ := by field_simp <;> ring
       have hc : (1/L^3)*((n : ℝ)+1)*L^2 ≤ 2*(n : ℝ)/L := by
         rw [show (1/L^3)*((n : ℝ)+1)*L^2 = ((n : ℝ)+1)/L by field_simp <;> ring]
         exact div_le_div_of_nonneg_right (by linarith) hL0.le
