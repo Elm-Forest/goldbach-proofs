@@ -29,17 +29,21 @@ SESSIONS = 128
 PROBLEMS = json.loads((ROOT / "research/problems.json").read_text(encoding="utf-8"))
 
 
-class DeskScaleTest(unittest.TestCase):
+class DeskServerTestCase(unittest.TestCase):
+    def configure_catalogue(self, folder):
+        pass
+
     def setUp(self):
         folder = Path(self.enterContext(tempfile.TemporaryDirectory()))
         self.folder = folder
         self.secret = secrets.token_hex(32).encode()
         (folder / "webhook").write_bytes(self.secret)
         (folder / "china-apnic.txt").write_bytes(b"")
-        for source in ("deploy/server.py", "deploy/site.js", "deploy/site.css", "deploy/desk.py", "deploy/model-aliases.json", "deploy/landau.py", "deploy/presence.py", "deploy/join.txt", "deploy/join-zh.txt",
+        for source in ("deploy/server.py", "deploy/site.js", "deploy/site.css", "deploy/desk.py", "deploy/reductions.py", "deploy/model-aliases.json", "deploy/agent-icons.svg", "deploy/landau.py", "deploy/presence.py", "deploy/join.txt", "deploy/join-zh.txt",
                        "deploy/zhihu_oauth.py", "deploy/sponsors.py", "deploy/github_identity.py", "deploy/zh.html", "deploy/en.html",
                        "research/gaps.json", "research/problems.json"):
             shutil.copy(ROOT / source, folder)
+        self.configure_catalogue(folder)
         openssl = os.environ.get("OPENSSL") or shutil.which("openssl")
         if not openssl and shutil.which("git"):
             git_openssl = Path(shutil.which("git")).parents[1] / "usr/bin/openssl.exe"
@@ -75,6 +79,31 @@ class DeskScaleTest(unittest.TestCase):
         self.server.wait(timeout=10)
         self.server.stdout.close()
 
+    def request(self, path, body=None, *, token=None, signed=False, ip=None, ticket=None, expected=200, text=False):
+        raw = json.dumps(body).encode() if body is not None else None
+        headers = {"Content-Type": "application/json"}
+        if token:
+            headers["Authorization"] = "Bearer " + token
+        if signed:
+            headers["X-Goldbach-Signature"] = "sha256=" + hmac.new(self.secret, raw, hashlib.sha256).hexdigest()
+        if ip:
+            # The production proxy supplies this header to the loopback upstream.
+            headers["X-Goldbach-Client-IP"] = ip
+        if ticket:
+            headers["X-Goldbach-Fleet"] = ticket
+        with closing(HTTPSConnection("127.0.0.1", self.port, timeout=45, context=self.context)) as conn:
+            conn.request("POST" if raw is not None else "GET", path, body=raw, headers=headers)
+            response = conn.getresponse()
+            if text:
+                self.assertEqual(response.status, expected, path)
+                return response.read().decode("utf-8")
+            result = (json.loads(gzip.decompress(response.read())) if response.getheader("Content-Encoding") == "gzip"
+                      else json.load(response))
+            self.assertEqual(response.status, expected, (path, result.get("error")))
+            return result
+
+
+class DeskScaleTest(DeskServerTestCase):
     def test_agent_attribution_across_problem_desks(self):
         for index, path in enumerate(("", "/problems/log-rank")):
             claim = self.request(path + "/api/desk/claim", {"handle": "alice"}, expected=201)
@@ -107,7 +136,7 @@ class DeskScaleTest(unittest.TestCase):
             self.assertEqual(status["results"][0]["agent"], {**agent, "source": "self_reported"})
             self.assertEqual({k: v for k, v in status["desk"]["agent_rankings"].items() if k != "providers"}, {
                 "models": [{"name": "model-test-v1", "accepted": 1, "points": 1}],
-                "harnesses": [{"name": "codex", "accepted": 1, "points": 1}], "proofs": 1})
+                "harnesses": [{"name": "codex", "accepted": 1, "points": 1, "icon": "codex"}], "proofs": 1})
             self.assertEqual(status["desk"]["rankings"]["proofs"], 1)
             for lang in ("zh", "en"):
                 page = self.request(path + "/?lang=" + lang, text=True)
@@ -173,28 +202,6 @@ class DeskScaleTest(unittest.TestCase):
         self.assertEqual(get_total(), 1)
         self.request("/problems/", ip="2001:db8::1", text=True)
         self.assertEqual(get_total(), 2)
-
-    def request(self, path, body=None, *, token=None, signed=False, ip=None, ticket=None, expected=200, text=False):
-        raw = json.dumps(body).encode() if body is not None else None
-        headers = {"Content-Type": "application/json"}
-        if token:
-            headers["Authorization"] = "Bearer " + token
-        if signed:
-            headers["X-Goldbach-Signature"] = "sha256=" + hmac.new(self.secret, raw, hashlib.sha256).hexdigest()
-        if ip:
-            # The production proxy supplies this header to the loopback upstream.
-            headers["X-Goldbach-Client-IP"] = ip
-        if ticket:
-            headers["X-Goldbach-Fleet"] = ticket
-        with closing(HTTPSConnection("127.0.0.1", self.port, timeout=45, context=self.context)) as conn:
-            conn.request("POST" if raw is not None else "GET", path, body=raw, headers=headers)
-            response = conn.getresponse()
-            if text:
-                self.assertEqual(response.status, expected, path)
-                return response.read().decode("utf-8")
-            result = json.load(response)
-            self.assertEqual(response.status, expected, (path, result.get("error")))
-            return result
 
     def wave(self, pool, mode, label, action, size=SESSIONS):
         ready = threading.Barrier(size, timeout=30)
@@ -458,6 +465,16 @@ class DeskScaleTest(unittest.TestCase):
         self.assertNotIn("providers", models_paged)
         self.request("/api/models?unknown=1", expected=400)
         self.request("/api/models?limit=101", expected=400)
+
+        with closing(HTTPSConnection("127.0.0.1", self.port, context=self.context)) as conn:
+            conn.request("GET", "/agent-icons.svg", headers={"Accept-Encoding": "gzip"})
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers.get("Content-Type"), "image/svg+xml")
+            sprite_svg = gzip.decompress(response.read()).decode("utf-8")
+            self.assertIn('id="brand-nex-agi"', sprite_svg)
+            self.assertIn('id="brand-antigravity"', sprite_svg)
+            self.assertIn('id="brand-tool-other"', sprite_svg)
 
 
 if __name__ == "__main__":

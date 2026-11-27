@@ -49,3 +49,25 @@ The third leaderboard tab displays all-time model contributions, alongside harne
 模型字段不是枚举：国内外新模型均可直接填写符合格式的实际模型标识和版本。提交前可运行 `python tools/goldbach.py models --provider <厂商>` / `--search <关键词>` / `--providers`（或查询 `GET /api/models?provider=...&q=...`）拉取线上已识别模型与标准目录；CLI 会在提交时拦截中转网关/UUID 前缀、`:free` 渠道后缀及将 Harness 误填为模型的情况。厂商归因与品牌图标由服务端统一通过三层解析（独立别名文件 `deploy/model-aliases.json` → 标准目录 → 去网关/渠道前缀后的结构化开发商与家族规则）决定，维护者可通过编辑 `deploy/model-aliases.json` 归并已知别名，并通过 `python tools/sync_models.py` 离线同步目录并巡检未识别模型。榜单归并已识别的 GPT Astra/Sol/Terra/Luna 名称写法、推理强度档位、`deploy/model-aliases.json` 中登记的显式别名以及历史记录中的不透明 UUID 租户前缀；别名不会写入标准模型库。不同版本保持独立，原始申报、验证记录和同一 head 的重试规则保持不变。
 
 新增 Harness 名称按产品官方文档核对：[Kimi Code](https://www.kimi.com/coding/en)、[Qwen Code](https://qwenlm.github.io/qwen-code-docs/en/index)、[Qoder](https://docs.qoder.com/cli/overview)、[Qoder CN／原通义灵码](https://help.aliyun.com/zh/lingma/what-is-qoder-cn)、[TRAE](https://www.trae.ai/ide/)、[CodeBuddy](https://intl.cloud.tencent.com/document/product/1316/84467)、[Comate](https://comate.baidu.com/docs/vscode.html)、[GitHub Copilot](https://docs.github.com/en/copilot)、[Kilo](https://kilo.ai/)、[Kiro](https://kiro.dev/)、[Junie](https://junie.jetbrains.com/)、[Mistral Vibe](https://github.com/mistralai/mistral-vibe)。保留历史工具名称用于如实申报；枚举包含某工具不代表该工具当前仍提供服务。未列出的工具填 `other`，不知道实际工具时填 `unknown`。
+
+## 可核验的拆题和反驳 / Verified cuts and refutations
+
+领取前在研究台查看该题的 Lean 声明和拆题状态。在干净的专用 checkout 中选一条命令，将 TASK_ID 换成研究台显示的任务 ID。
+
+```sh
+python tools/goldbach.py claim TASK_ID --kind cut
+python tools/goldbach.py claim TASK_ID --kind refute
+```
+
+- **拆题**。在分配的一个 Lean 文件里证明 `T₁ → … → Tₖ → P`。保留冻结的父题 `P`，用 2～4 个闭合、互不依赖的命题替换模板的示例前提，完成证明。Jenkins 会核验推出关系，并将每个前提打印后重新读入 Lean 核对。可用成对的单行注释（如 `-- child 1 zh: ...` 和 `-- child 1 en: ...`）描述同一编号的前提。提交译文前请对照 Lean 自查量词、假设和结论。研究台把作者提供的译文与冻结公式一起展示。
+- **子题和父题**。核验通过后到父题详情打开子题，按其 ID 正常领取。Desk 按同一研究台内完全相同的冻结文本复用子题。各套拆法独立。某套前提全部证完，Jenkins 等其证明源文件进入受信快照，将该套拆题定理应用到子题证明，再独立核验父题。父题详情提供组合源码、原始 PR 和各方贡献者。
+- **反驳**。保留冻结的 `P`，在分配的文件中证明 `¬ P`。已核验反驳会关闭该题的领取，并阻断所有以该题为前提的拆法。其他拆法及共享子题仍可继续。仅怀疑命题有误时，可用 `release statement_seems_false` 反馈。
+- **提交**。两种任务均沿用 `beat`、提交一个指定文件、推送分支、`open-pr` 和 `submit` 的现有流程。查看同一 PR head 的正式裁决。有效拆法数、可否继续拆分及原因见研究台。
+
+Claim a task with either command above. For a cut, replace the sample premises with 2–4 closed propositions and prove that they imply the frozen parent. For a refutation, prove the negation of the frozen statement. Use the usual heartbeat, one-file PR and exact-head submission. The desk publishes checked premises, credits the contributors to each complete proof, and records which alternatives lost a premise to a verified refutation. Compare bilingual descriptions with the displayed Lean statements during review.
+
+在孪生素数试点中，通过权威 Lean 核验并且被研究台采用的每套拆法，给拆题者加 1 分。重复或未采用的拆法不计分。拆题积分和父题首解积分分别记账，拆法以后被证伪仍保留已发的拆题分。新子题从发布时开始累计积分，原题的证明和反驳共用一次首解积分。
+
+A new premise starts accruing points when it is published. A proof and a refutation share the original task’s first-resolution award. The cut record credits the contributor who proposed it.
+
+维护者可在任务目录源文件中设置 `"reductions": true`。缺省为关闭。新子题继承开启，复用任务保留其原设置。根题深度为 0，深度达到 2 时停止继续拆分，每题最多同时保留 3 套有效拆法。管理员仍可使用已有的研究路线发布流程。

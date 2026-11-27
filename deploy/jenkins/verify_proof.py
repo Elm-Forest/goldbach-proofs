@@ -17,12 +17,12 @@ class ProofRejected(ValueError):
     """The trusted verifier returned a proof rejection."""
 
 
-def verifier_manifest(result, module, proof, read_source):
+def verifier_manifest(result, module, proof, read_source, kind="check"):
     lines = result.stdout.splitlines()
     if result.returncode == 1 and lines and re.match(r"^REJECTED \([a-z-]+\): ", lines[-1]):
         raise ProofRejected(lines[-1])
     result.check_returncode()
-    return build_manifest(result.stdout, module, proof, read_source)
+    return build_manifest(result.stdout, module, proof, read_source, kind)
 
 
 def check_cache(project, work):
@@ -37,7 +37,14 @@ def check_cache(project, work):
             raise FileNotFoundError(f"The trusted Lean cache is missing {module}")
 
 
+def mode_for(work):
+    kind_path = work / "task.kind"
+    task_kind = kind_path.read_text().strip() if kind_path.exists() else "prove"
+    return {"prove": "check", "cut": "reduce", "refute": "refute"}[task_kind]
+
+
 def verify(file, work, project, toolchain, ownership_check):
+    kind = mode_for(work)
     check_cache(project, work)
     dependencies = (work / "outside-build-order.txt").read_text().splitlines()
     if any(not PROOF_MODULE.fullmatch(name) for name in dependencies):
@@ -120,10 +127,10 @@ def verify(file, work, project, toolchain, ownership_check):
     compile_module(leaf, 1200, submission=True)
     verification = subprocess.run(flags + [
         "--entrypoint", "/usr/bin/timeout", IMAGE, "--kill-after=10", "1200",
-        "/project/.lake/build/bin/checklemma", module, "/input/statement.txt", "check",
+        "/project/.lake/build/bin/checklemma", module, "/input/statement.txt", kind,
     ], stdout=subprocess.PIPE, text=True)
 
     def read_source(name):
         return project.joinpath(*name.split(".")).with_suffix(".lean").read_bytes()
 
-    return verifier_manifest(verification, module, (proof / leaf).read_bytes(), read_source)
+    return verifier_manifest(verification, module, (proof / leaf).read_bytes(), read_source, kind)

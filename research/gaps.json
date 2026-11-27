@@ -16612,6 +16612,32 @@
       "route_source": "frontier-moment-antispike"
     },
     {
+      "id": "L-goldbach-denominator-cutoff-fourth-moment-floor",
+      "statement": "let w := fun k : ℕ => if Nat.Prime k then Real.log (k : ℝ) else 0; let E := fun x : ℝ => Complex.exp (((2 * Real.pi * x : ℝ) : ℂ) * Complex.I); let S := fun (n : ℕ) (t : ℝ) => Finset.sum (Finset.range (n + 1)) (fun k => (w k : ℂ) * E ((k : ℝ) * t)); let arcs := fun (n D H : ℕ) => {t : ℝ | ∃ q a : ℕ, 1 ≤ q ∧ q ≤ D ∧ a ≤ q ∧ Nat.Coprime a q ∧ |t - (a : ℝ) / q| ≤ (H : ℝ) / ((q : ℝ) * n)}; ∃ N : ℕ, ∀ n : ℕ, N ≤ n → ∀ D H : ℕ, 0 < D → 32 * (D : ℝ) ≤ Real.sqrt n → (H : ℝ) ≤ Real.sqrt n → (n : ℝ) ^ 3 ≤ 12582912 * (D : ℝ) ^ 2 * intervalIntegral (fun t => (arcs n D H)ᶜ.indicator (fun u => ‖S n u‖ ^ 4) t) (0 : ℝ) 1 MeasureTheory.volume",
+      "plain_statement": {
+        "zh": "对充分大的每个整数 n，同时对满足 1 ≤ D、32D ≤ √n、0 ≤ H ≤ √n 的所有整数参数，删去分母至多 D 的每个既约分数 a/q 周围半径 H/(qn) 的区间后，素数对数权指数和在 [0,1] 剩余部分上的四阶矩至少为 n³/(12582912 D²)。",
+        "en": "For every sufficiently large integer n, uniformly for integers D ≥ 1 and 0 ≤ H ≤ √n with 32D ≤ √n, remove the intervals of radius H/(qn) about the reduced fractions a/q of denominator at most D. The fourth moment of the prime-log exponential sum on the rest of [0,1] is at least n³/(12582912 D²)."
+      },
+      "brief": {
+        "zh": "取 D < q ≤ 8D 的平方自由分母，其倒数和至少为 1/8。对既约剩余类上的振幅应用柯西不等式，再将缩放后的平方振幅在互不相交、避开所删弧的窗口中积分。立方根截断给出 n^(7/3) 的下界，平方根除以四次对数的截断给出 n² 乘八次对数的下界。",
+        "en": "Use squarefree denominators D < q ≤ 8D, whose reciprocal mass is at least 1/8. Apply Cauchy–Schwarz on reduced residues and integrate the rescaled squared amplitude on disjoint windows outside the mask. The cube-root cutoff gives order n^(7/3), and the square-root cutoff divided by a fourth power of a logarithm gives order n² times an eighth power of that logarithm."
+      },
+      "source": "https://doi.org/10.5281/zenodo.24550608",
+      "program": "correlation",
+      "role": "lemma",
+      "parallel": true,
+      "depends_on": [
+        "L-goldbach-sqrt-arc-second-moment-floor"
+      ],
+      "imports": [
+        "Conjectures.Goldbach.SqrtArcSecondMomentFloor"
+      ],
+      "module": "Conjectures.Goldbach.DenominatorCutoffFourthMomentFloor",
+      "file": "lean/Conjectures/Goldbach/DenominatorCutoffFourthMomentFloor.lean",
+      "track": "frontier-moment-antispike",
+      "route_source": "frontier-moment-antispike"
+    },
+    {
       "id": "L-goldbach-normalized-shift-optimal-window",
       "statement": "∀ (I : Finset ℕ) (c : ℕ → ℝ) (m B : ℝ),\n      (∃ j ∈ I, c j = m) → (∀ j ∈ I, m ≤ c j) → 1 ≤ B * (I.card:ℝ) →\n      let v := fun (t : ℝ) (j : ℕ) => max (1 - t*(c j-m)) 0\n      let w := fun (t : ℝ) (j : ℕ) => v t j / (∑ k ∈ I, v t k)\n      ∃ t : ℝ, 0 ≤ t ∧ (∀ j ∈ I, 0 ≤ w t j) ∧ (∑ j ∈ I, w t j) = 1 ∧\n        (∑ j ∈ I, (w t j)^2) ≤ B ∧\n        ((∑ j ∈ I, (w t j)^2) = B ∨ ∀ j ∈ I, c j ≠ m → w t j = 0) ∧\n        (let P := I.filter (fun j => 0 < w t j)\n         let μ := (∑ j ∈ P, c j)/(P.card:ℝ)\n         P.Nonempty ∧ (∀ i ∈ P, ∀ j ∈ I, c j ≤ c i → j ∈ P) ∧\n           (∑ j ∈ I, w t j * c j) =\n             μ - Real.sqrt ((B - 1/(P.card:ℝ)) * (∑ j ∈ P, (c j-μ)^2))) ∧\n        ∀ u : ℕ → ℝ, (∀ j ∈ I, 0 ≤ u j) → (∑ j ∈ I, u j) = 1 →\n          (∑ j ∈ I, (u j)^2) ≤ B → (∑ j ∈ I, w t j * c j) ≤ ∑ j ∈ I, u j * c j",
       "plain_statement": {
@@ -16651,6 +16677,32 @@
       "imports": [],
       "file": "lean/Conjectures/Goldbach/SqrtArcSecondMomentFloor.lean",
       "module": "Conjectures.Goldbach.SqrtArcSecondMomentFloor",
+      "track": "frontier-moment-antispike",
+      "route_source": "frontier-moment-antispike"
+    },
+    {
+      "id": "L-goldbach-sqrt-shell-second-moment-floor",
+      "statement": "let w := fun k : ℕ => if Nat.Prime k then Real.log (k:ℝ) else 0; let E := fun x : ℝ => Complex.exp (((2*Real.pi*x:ℝ):ℂ)*Complex.I); let S := fun (n : ℕ) (u : ℕ → ℝ) (t : ℝ) => Finset.sum (Finset.range (n+1)) (fun k => (u k:ℂ)*E ((k:ℝ)*t)); let Q := fun n : ℕ => (Nat.log 2 (n+2))^2; let Q₁ := fun n : ℕ => ⌊(n:ℝ)^(1/3:ℝ)⌋₊; let H := fun n : ℕ => 256 * Q₁ n * Q n; let wideArcs := fun n : ℕ => {t : ℝ | ∃ q a : ℕ, 1≤q ∧ q≤Q₁ n ∧ a≤q ∧ Nat.Coprime a q ∧ |t-(a:ℝ)/(q:ℝ)| ≤ (H n:ℝ)/((q:ℝ)*(n:ℝ))}; let Q₂ := fun n : ℕ => ⌊Real.sqrt (n : ℝ) / ((Nat.log 2 (n + 2) : ℝ) ^ 4)⌋₊; let sqrtArcs := fun n : ℕ => {t : ℝ | ∃ q a : ℕ, 1 ≤ q ∧ q ≤ Q₂ n ∧ a ≤ q ∧ Nat.Coprime a q ∧ |t - (a : ℝ) / (q : ℝ)| ≤ ((256 * Q₂ n * Q n : ℕ) : ℝ) / ((q : ℝ) * (n : ℝ))}; ∃ c : ℝ, 0 < c ∧ ∃ N : ℕ, ∀ n : ℕ, N ≤ n → c * (n : ℝ) * Real.log (n : ℝ) ≤ intervalIntegral (fun t => (sqrtArcs n \\ wideArcs n).indicator (fun u => ‖S n w u‖ ^ 2) t) (0 : ℝ) 1 MeasureTheory.volume",
+      "plain_statement": {
+        "zh": "对所有充分大的整数 n，仅在平方根主弧中扣除立方根主弧后留下的区域内，素数对数权指数和的二阶矩已经至少为 c n log n，其中 c>0 与 n 无关。",
+        "en": "For every sufficiently large integer n, the second moment of the prime-log exponential sum on the portion of sqrtArcs outside wideArcs is at least c n log n for an absolute c > 0."
+      },
+      "brief": {
+        "zh": "取分母在 n 的三分之一次方与十二分之五次方之间的平方自由既约分数。在每个分数右边取宽 1/(6n) 的小窗。用有理数的间距避开 wideArcs，并用分数自身作为中心证明整窗包含于 sqrtArcs。对各几何分母区间的贡献求和。",
+        "en": "Use squarefree denominators between the cube-root cutoff and n^(5/12). Place a window of width 1/(6n) to the right of each reduced fraction. Rational spacing puts the windows outside wideArcs, and their own centers put them inside sqrtArcs. Sum their second-moment contributions across geometric blocks."
+      },
+      "source": "https://github.com/CGandGameEngineLearner/goldbach-proofs/pull/3586",
+      "program": "correlation",
+      "role": "lemma",
+      "parallel": true,
+      "depends_on": [
+        "L-goldbach-sqrt-arc-second-moment-floor"
+      ],
+      "imports": [
+        "Conjectures.Goldbach.SqrtArcSecondMomentFloor"
+      ],
+      "module": "Conjectures.Goldbach.SqrtShellSecondMomentFloor",
+      "file": "lean/Conjectures/Goldbach/SqrtShellSecondMomentFloor.lean",
       "track": "frontier-moment-antispike",
       "route_source": "frontier-moment-antispike"
     },

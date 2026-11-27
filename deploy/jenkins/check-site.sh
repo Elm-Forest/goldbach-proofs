@@ -11,6 +11,7 @@ python3 -B -m unittest \
   deploy.test_github_identity \
   deploy.test_presence \
   deploy.test_desk \
+  deploy.test_cut_refute \
   deploy.test_agent_attribution \
   deploy.test_desk_scale.DeskScaleTest.test_agent_attribution_across_problem_desks \
   deploy.test_desk_scale.DeskScaleTest.test_directory_counts_and_scoped_join_guides \
