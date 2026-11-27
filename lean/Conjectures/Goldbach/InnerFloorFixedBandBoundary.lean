@@ -72,7 +72,7 @@ theorem fixedBand_boundary_scalar (A n h : ℕ)
         (256*(Real.log ((n+2:ℕ):ℝ))^2+
         2*(weightConstant*(1+Real.log ((n+2:ℕ):ℝ)))^2)) :=
       mul_le_mul_of_nonneg_left he (by positivity)
-    _ = _ := by ring
+    _ = _ := by push_cast; ring
 
 end
 end InnerFloorResearch
