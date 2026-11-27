@@ -23,7 +23,7 @@ jobs:
       - name: Verify exact single-file pre-PR candidate in kernel
         run: |
           cd lean
-          echo "ca6fd367b05cfce6784dab7da45e8858b6497c7cd9fc7e5c590847bf29c6d39c  Conjectures/Goldbach/WideRemainderInnerFloor.lean" | sha256sum -c -
+          echo "b65a76c87e8876821fed1e0760a07896331c155f687fd89d4403745a47d0e525  Conjectures/Goldbach/WideRemainderInnerFloor.lean" | sha256sum -c -
           lake env lean Conjectures/Goldbach/WideRemainderInnerFloor.lean 2>&1 | tee /tmp/pre_pr_verify.log
           python3 - << 'PY'
           import pathlib, re

@@ -3,7 +3,7 @@
 - **Target Task**: `L-goldbach-wide-remainder-inner-floor`
 - **Assigned Single File**: `lean/Conjectures/Goldbach/WideRemainderInnerFloor.lean`
 - **File Size**: `183102` bytes (`178.8` KiB, well under the 2 MiB single-file limit)
-- **Exact SHA256**: `ca6fd367b05cfce6784dab7da45e8858b6497c7cd9fc7e5c590847bf29c6d39c`
+- **Exact SHA256**: `b65a76c87e8876821fed1e0760a07896331c155f687fd89d4403745a47d0e525`
 - **Total `#print axioms` Audits**: `59` (all `[propext, Classical.choice, Quot.sound]`, zero `sorry`, zero GRH imports)
 - **Official Claim Branch**: `goldbach/L-goldbach-wide-remainder-inner-floor/d95a156c` (kept clean & untouched until user review)
 - **Pre-PR Verification Branch**: `pre-pr/L-goldbach-wide-remainder-inner-floor-route-b`

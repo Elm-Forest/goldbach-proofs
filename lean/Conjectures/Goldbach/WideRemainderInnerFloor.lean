@@ -1,3 +1,6 @@
+import Mathlib
+import Conjectures.Goldbach.DyadicCellShortPrimeFloor
+
 /-!
 # Wide Remainder Inner Floor — Route B Pre-PR Unified Formalization
 
@@ -25,8 +28,6 @@ axioms (`propext`, `Classical.choice`, `Quot.sound`) and zero `sorry`:
    with the single remaining open mathematical barrier (`OddNearOneZeroBarrier`)
    isolated cleanly at the top level.
 -/
-import Mathlib
-import Conjectures.Goldbach.DyadicCellShortPrimeFloor
 
 /-!
 Small independently replayable arithmetic interface extracted from
