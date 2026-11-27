@@ -36,9 +36,9 @@ theorem eventualFixedBandBoundarySmall (k : ℕ) (ε : ℝ) (hε : 0 < ε) :
   have hN : ((n+2:ℕ):ℝ) ≤ (n:ℝ)^2 := by
     push_cast
     nlinarith only [hnR,sq_nonneg ((n:ℝ)-2)]
-  have hlogN := Real.log_le_log (by positivity : (0:ℝ) < ((n+2:ℕ):ℝ)) hN
-  rw [Real.log_pow] at hlogN
-  norm_num at hlogN
+  have hlogN : Real.log ((n+2:ℕ):ℝ) ≤ 2*Real.log (n:ℝ) := by
+    simpa only [Real.log_pow,Nat.cast_ofNat] using
+      (Real.log_le_log (by positivity : (0:ℝ) < ((n+2:ℕ):ℝ)) hN)
   have hlogA := Real.log_le_log
     (by exact_mod_cast (show 0 < A by omega)) (show (A:ℝ) ≤ ((n+2:ℕ):ℝ) by exact_mod_cast hAn)
   have hlogN0 : 0 ≤ Real.log ((n+2:ℕ):ℝ) :=
