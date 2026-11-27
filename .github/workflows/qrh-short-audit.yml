@@ -1,0 +1,106 @@
+name: Independent 23/24 QRH source and port audit
+on:
+  push:
+    branches: [cloud-preflight/qrh-short-20261128]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: qrh-short-20261128
+  cancel-in-progress: false
+jobs:
+  audit:
+    if: github.repository == 'Elm-Forest/goldbach-proofs'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Retrieve pinned short theorem and exact module closure
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --single-branch --branch qrh-23-24-pruned --no-checkout https://github.com/akashlevy/math.git /tmp/short-source
+          test "$(git -C /tmp/short-source rev-parse HEAD)" = c388e88e6519d139ad2ca5571ef0c7fbf0e245b5
+          git clone --depth 1 --no-checkout https://github.com/Zhang-Liao/quasi-riemann.git /tmp/short-vendor
+          git -C /tmp/short-vendor fetch --depth 1 origin 8bcf392d0ddc241a87fc8c3371273af704638f9b
+          git -C /tmp/short-vendor checkout --detach FETCH_HEAD
+          test "$(git -C /tmp/short-vendor rev-parse HEAD)" = 8bcf392d0ddc241a87fc8c3371273af704638f9b
+          mkdir /tmp/short-qrh
+          python research-audit/qrh_short_extract.py /tmp/short-source /tmp/short-vendor /tmp/short-qrh
+          git -C /tmp/short-source show HEAD:LICENSE > /tmp/short-qrh/UPSTREAM-LICENSE || true
+          cd /tmp/short-qrh
+          cat > lakefile.lean <<'LEAN'
+          import Lake
+          open Lake DSL
+          package «qrh-short-audit» where
+            version := v!"0.1.0"
+            fixedToolchain := true
+            leanOptions := #[⟨`autoImplicit, false⟩]
+          require mathlib from git
+            "https://github.com/leanprover-community/mathlib4.git" @ "fc4f59e577feb1a4956671bc04ac18aaaf8cd842"
+          lean_lib OAI where
+            globs := #[`OAI.+]
+          lean_lib RellichKondrachov where
+            globs := #[`RellichKondrachov.+]
+          lean_lib PrimeNumberTheoremAnd where
+            globs := #[`PrimeNumberTheoremAnd.+]
+          @[default_target]
+          lean_lib QRHShortAudit
+          LEAN
+          printf '%s\n' leanprover/lean4:v4.36.0 > lean-toolchain
+          cat > QRHShortAudit.lean <<'LEAN'
+          import OAI.NumberTheory.DirichletL.QRH
+          theorem qrhShort_exactUniformStrip :
+              ∀ (q : ℕ) [NeZero q] (χ : DirichletCharacter ℂ q) (s : ℂ),
+              (23/24:ℝ) < s.re → ¬ (χ = 1 ∧ s = 1) →
+              DirichletCharacter.LFunction χ s ≠ 0 := by
+            intro q _ χ s hs hpole
+            exact OAI.DirichletCharacter.LFunction_ne_zero_of_twenty_three_twenty_fourths_lt_re χ hs hpole
+          LEAN
+          cat > CheckAxioms.lean <<'LEAN'
+          import QRHShortAudit
+          #print axioms OAI.DirichletCharacter.LFunction_ne_zero_of_twenty_three_twenty_fourths_lt_re
+          #print axioms qrhShort_exactUniformStrip
+          LEAN
+          du -sh .
+      - name: Install pinned Lean and Mathlib
+        run: |
+          set -euxo pipefail
+          cd /tmp/short-qrh
+          curl --retry 4 -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --no-modify-path --default-toolchain none
+          export PATH="$HOME/.elan/bin:$PATH"
+          elan toolchain install "$(cat lean-toolchain)"
+          lake update
+          lake exe cache get
+          lean --version
+          nproc; free -h; df -h .
+      - uses: actions/cache/restore@v4
+        id: shortcache
+        with:
+          path: /tmp/short-qrh/.lake/build
+          key: qrh-short-fc4f59e-c388e88e-${{ github.run_id }}
+          restore-keys: qrh-short-fc4f59e-c388e88e-
+      - name: Independent short theorem kernel replay and exact type
+        run: |
+          set -euxo pipefail
+          cd /tmp/short-qrh
+          export PATH="$HOME/.elan/bin:$PATH"
+          export LEAN_NUM_THREADS=4
+          time lake build QRHShortAudit 2>&1 | tee build-short.log
+          lake env lean CheckAxioms.lean | tee axioms-short.log
+      - uses: actions/cache/save@v4
+        if: always()
+        continue-on-error: true
+        with:
+          path: /tmp/short-qrh/.lake/build
+          key: ${{ steps.shortcache.outputs.cache-primary-key }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: short-qrh-audit
+          path: |
+            /tmp/short-qrh/short-closure.json
+            /tmp/short-qrh/build-short.log
+            /tmp/short-qrh/axioms-short.log
+          if-no-files-found: ignore
