@@ -1,0 +1,45 @@
+name: Jacobian certificate research benchmark
+on:
+  push:
+    branches: [cloud-preflight/jacobian-rfc-20261128]
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.repository == 'Elm-Forest/goldbach-proofs'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up pinned Lean and Mathlib
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          curl --retry 4 -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --no-modify-path --default-toolchain none
+          export PATH="$HOME/.elan/bin:$PATH"
+          elan toolchain install "$(cat lean-toolchain)"
+          lake exe cache get
+      - name: Compile generic correctness and largest certificate row
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          export LEAN_NUM_THREADS=2
+          time lake env lean JacobianBenchmark.lean 2>&1 | tee /tmp/jacobian.log
+          python3 - <<'PYAX'
+          import re,pathlib
+          log=pathlib.Path('/tmp/jacobian.log').read_text()
+          assert 'sorryAx' not in log and 'error:' not in log
+          matches=re.findall(r"depends on axioms: \[([^\]]*)\]",log)
+          assert len(matches)==2,log[-1000:]
+          for m in matches:
+              assert set(a.strip() for a in m.split(',') if a.strip()) <= {'propext','Classical.choice','Quot.sound'},m
+          print('JACOBIAN_CORRECTNESS_AND_LARGEST_ROW_PASS')
+          PYAX
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacobian-benchmark-log
+          path: /tmp/jacobian.log
