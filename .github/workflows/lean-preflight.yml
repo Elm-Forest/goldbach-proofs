@@ -1,0 +1,31 @@
+name: Lean preflight (conductor-sensitive projection)
+on:
+  push:
+    branches:
+      - cloud-preflight/inner-reduced-gauss-20261127
+permissions:
+  contents: read
+jobs:
+  compile:
+    if: github.repository == 'Elm-Forest/goldbach-proofs'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Lean and Mathlib
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          curl --retry 4 -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --no-modify-path --default-toolchain none
+          export PATH="$HOME/.elan/bin:$PATH"
+          elan toolchain install "$(cat lean-toolchain)"
+          lake exe cache get
+      - name: Build verified imports and research helper
+        working-directory: lean
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          lake build Conjectures.Goldbach.InnerFloorReducedGaussEnergy
+          echo "PREFLIGHT PASS: InnerFloorReducedGaussEnergy.lean"
