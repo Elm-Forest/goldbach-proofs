@@ -136,44 +136,5 @@ theorem sharpModulusBudget {n x h : ℕ} {t : ℝ} (hn : 1 ≤ n) (hx : 1 ≤ x)
     _ ≤ (n : ℝ)^(4/5 : ℝ) := Real.rpow_le_rpow_of_exponent_le hnR (by norm_num)
     _ ≤ _ := hlo
 
-/-- The frozen real AP mean, converted to integer rows without weakening
-the modulus condition to the exponent 1/4 used in the low-skirt proof. -/
-theorem fullBandDyadicAP :
-    ∃ C : ℝ, 0 < C ∧ ∃ X : ℕ, ∀ n x h : ℕ,
-      X ≤ x → h ≤ x → x ≤ n → (n : ℝ)^(4/5 : ℝ) ≤ (h : ℝ) →
-      1 ≤ outerCutoff n →
-      (∑ y ∈ Ico x (2*x), GBSkirtVariance.row (outerCutoff n) h y) ≤
-        C * (x : ℝ) * (h : ℝ) / (Real.log (x : ℝ))^18 := by
-  obtain ⟨C, hC, X, hX⟩ := paperInput
-  refine ⟨C, hC, max 2 X, ?_⟩
-  intro n x h hx hhx hxn hlen hB
-  have hx2 : 2 ≤ x := (le_max_left _ _).trans hx
-  have hxX : X ≤ x := (le_max_right _ _).trans hx
-  have hx1 : (1 : ℝ) < x := by exact_mod_cast (show 1 < x by omega)
-  have hx0 := zero_lt_one.trans hx1
-  have hlog := Real.log_pos hx1
-  have hxpow : (x : ℝ)^(4/5 : ℝ) ≤ (h : ℝ) :=
-    (Real.rpow_le_rpow (Nat.cast_nonneg x) (by exact_mod_cast hxn) (by norm_num)).trans hlen
-  have hh0 := (Real.rpow_pos_of_pos hx0 (4/5 : ℝ)).trans_le hxpow
-  let t := Real.log (h : ℝ) / Real.log (x : ℝ)
-  have ht : (4/5 : ℝ) ≤ t := by
-    apply (le_div_iff₀ hlog).2
-    have H := Real.log_le_log (Real.rpow_pos_of_pos hx0 _) hxpow
-    rwa [Real.log_rpow hx0] at H
-  have ht' : t ≤ 1 := by
-    apply (div_le_iff₀ hlog).2
-    simpa only [one_mul] using Real.log_le_log hh0 (by exact_mod_cast hhx)
-  have hpow : (x : ℝ)^t = (h : ℝ) := by
-    rw [Real.rpow_def_of_pos hx0]
-    unfold t
-    rw [show Real.log (x : ℝ) * (Real.log (h : ℝ) / Real.log (x : ℝ)) =
-        Real.log (h : ℝ) by field_simp, Real.exp_log hh0]
-  have hmod := sharpModulusBudget (show 1 ≤ n by omega) (show 1 ≤ x by omega) hxn hlen ht ht'
-  rw [← hpow] at hmod
-  have H := hX (x : ℝ) t (by exact_mod_cast hxX) hx1.le
-    (by linarith) ht' (outerCutoff n) hB hmod
-  rw [hpow, ← GBSkirtVariance.paper_integral] at H
-  simpa only [Nat.cast_mul, Nat.cast_ofNat] using H
-
 end
 end InnerFloorResearch

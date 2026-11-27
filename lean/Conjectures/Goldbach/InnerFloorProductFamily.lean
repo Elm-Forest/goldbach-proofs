@@ -41,7 +41,7 @@ theorem commonMultipleTotientWeight (A L : ℕ) (hL : 0 < L) (hLA : L ≤ A) :
   rw [hrewrite]
   apply (sum_conductor_weights A F hF).trans
   rw [hsum,pow_two]
-  exact mul_le_mul_of_nonneg_right hratio (by positivity)
+  exact mul_le_mul_of_nonneg_right hratio (mul_nonneg weightConstant_nonneg (by linarith))
 
 def productCoefficient (q d₁ d₂ D : ℕ) : ℝ :=
   Real.sqrt d₁ * Real.sqrt d₂ * q * (1+Real.log q) /
@@ -75,7 +75,9 @@ theorem productCoefficientFamily (A d₁ d₂ D : ℕ)
   · have hA : 0<A := hL.trans_le hLA
     have hlogA : 0≤Real.log A := Real.log_nonneg (by exact_mod_cast hA)
     let C := weightConstant*(1+Real.log A)^2/Real.sqrt D
-    have hC : 0≤C := by dsimp [C]; positivity
+    have hC : 0≤C := by
+      dsimp [C]
+      exact div_nonneg (mul_nonneg weightConstant_nonneg (sq_nonneg _)) (Real.sqrt_nonneg _)
     have ht (q : ℕ) (hq : q∈(Icc 1 A).filter (fun q => L ∣ q)) :
         productCoefficient q d₁ d₂ D ≤ C*((L:ℝ)/(q.totient:ℝ)) := by
       have hq1 : 0<q := (mem_Icc.mp (mem_filter.mp hq).1).1
@@ -95,7 +97,8 @@ theorem productCoefficientFamily (A d₁ d₂ D : ℕ)
         _ ≤ ((L:ℝ)/(q.totient:ℝ))*(weightConstant*(1+Real.log A))*
             (1+Real.log A)/Real.sqrt D := by
           apply div_le_div_of_nonneg_right _ hD'.le
-          apply mul_le_mul _ (by linarith) (by positivity) (by positivity)
+          apply mul_le_mul _ (by linarith) (by positivity)
+            (mul_nonneg (by positivity) (mul_nonneg weightConstant_nonneg (by linarith)))
           exact mul_le_mul (div_le_div_of_nonneg_right hroot hφ.le) hr
             (by positivity) (by positivity)
         _ = _ := by dsimp [C]; ring
@@ -114,7 +117,7 @@ theorem productCoefficientFamily (A d₁ d₂ D : ℕ)
       have hq' := mem_filter.mp hq
       exact hLA ((Nat.le_of_dvd (mem_Icc.mp hq'.1).1 hq'.2).trans (mem_Icc.mp hq'.1).2)
     rw [hset,he,sum_empty]
-    positivity
+    exact div_nonneg (mul_nonneg (pow_nonneg weightConstant_nonneg _) (by positivity)) (Real.sqrt_nonneg _)
 
 end
 end InnerFloorResearch

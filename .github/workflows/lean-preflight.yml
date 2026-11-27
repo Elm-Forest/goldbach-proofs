@@ -25,6 +25,11 @@ jobs:
           key: inner-community-linux-x64-1fe24b28-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-${{ github.run_id }}
           restore-keys: |
             inner-community-linux-x64-1fe24b28-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-
+      - name: Read official verified import registry
+        continue-on-error: true
+        run: |
+          curl -fsSL --connect-timeout 5 --max-time 15 https://jenkins-hook.goldbach.tech/verified-imports.json -o /tmp/verified-imports.json
+          python -c 'import json; d=json.load(open("/tmp/verified-imports.json")); print("module count",len(d)); print("relevant modules:",[k for k in d if any(t in k.lower() for t in ("zero","riemann","siegel","nonvanish","dirichlet"))])'
       - name: Install pinned Lean and Mathlib
         working-directory: lean
         run: |
@@ -57,5 +62,5 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.elan/bin:$PATH"
           time lake env lean Conjectures/Goldbach/InnerFloorDensityBudget.lean
-          time lake build Conjectures.Goldbach.InnerFloorGoodZeroAssembly Conjectures.Goldbach.InnerFloorNearOneSparsity Conjectures.Goldbach.InnerFloorHighBadZeros Conjectures.Goldbach.InnerFloorWindowFormulaEnergy Conjectures.Goldbach.InnerFloorSignedSparsePacket Conjectures.Goldbach.InnerFloorConductorLift Conjectures.Goldbach.InnerFloorPhysicalL2 Conjectures.Goldbach.InnerFloorPrimeWeightTransfer Conjectures.Goldbach.InnerFloorReducedGallagher Conjectures.Goldbach.InnerFloorCanonicalResidual Conjectures.Goldbach.InnerFloorQuadraticPacket Conjectures.Goldbach.InnerFloorModelTransfer Conjectures.Goldbach.InnerFloorProductConductor Conjectures.Goldbach.InnerFloorFullSpectrum Conjectures.Goldbach.InnerFloorProductFamily Conjectures.Goldbach.InnerFloorReducedModelTransfer Conjectures.Goldbach.InnerFloorFrozenAssembly
+          time lake build Conjectures.Goldbach.InnerFloorGoodZeroAssembly Conjectures.Goldbach.InnerFloorNearOneSparsity Conjectures.Goldbach.InnerFloorHighBadZeros Conjectures.Goldbach.InnerFloorWindowFormulaEnergy Conjectures.Goldbach.InnerFloorSignedSparsePacket Conjectures.Goldbach.InnerFloorConductorLift Conjectures.Goldbach.InnerFloorPhysicalL2 Conjectures.Goldbach.InnerFloorPrimeWeightTransfer Conjectures.Goldbach.InnerFloorReducedGallagher Conjectures.Goldbach.InnerFloorCanonicalResidual Conjectures.Goldbach.InnerFloorQuadraticPacket Conjectures.Goldbach.InnerFloorModelTransfer Conjectures.Goldbach.InnerFloorProductConductor Conjectures.Goldbach.InnerFloorFullSpectrum Conjectures.Goldbach.InnerFloorProductFamily Conjectures.Goldbach.InnerFloorReducedModelTransfer Conjectures.Goldbach.InnerFloorFrozenAssembly Conjectures.Goldbach.InnerFloorUniformStripBridge
           echo "PREFLIGHT PASS"

@@ -10,6 +10,9 @@ No analytic input is assumed beyond the already verified Gallagher
 inequality. This replaces the earlier all-residue variance bound.
 -/
 open Finset MeasureTheory
+open GoldbachFourthMoment (phase primeSum)
+open GoldbachGRHArcs (center)
+open GoldbachGRHModel (model)
 open scoped Classical Interval
 namespace InnerFloorResearch
 noncomputable section
