@@ -2,7 +2,7 @@ name: Lean cloud preflight
 on:
   push:
     branches:
-      - cloud-preflight/arc-perturbation-20261125
+      - cloud-preflight/inner-floor-20261127
 permissions:
   contents: read
 jobs:
@@ -28,7 +28,7 @@ jobs:
           set -u
           export PATH="$HOME/.elan/bin:$PATH"
           fail=0
-          for proof in ../corrected-pr-proofs/*.lean; do
+          for proof in ../inner-research/*.lean; do
             echo "::group::$(basename "$proof")"
             if timeout 240 lake env lean "$proof"; then
               echo "PREFLIGHT PASS: $(basename "$proof")"
