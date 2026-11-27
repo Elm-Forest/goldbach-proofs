@@ -56,4 +56,12 @@ power inequalities; no asymptotic assumption or floating-point arithmetic. -/
 theorem realPowerBudget {n e δ : ℝ} (hn : 1 ≤ n) (he : e ≤ -δ) :
     n^e ≤ n^(-δ) := Real.rpow_le_rpow_of_exponent_le hn he
 
+/-- The exact scale in the already accepted zero-sum mean-square theorem
+is Q^2/(h/X) <= X^(5/12). This has uniform exponent slack. -/
+theorem acceptedWindowScaleExponent {a b c : ℝ}
+    (ha' : a ≤ 1/5) (hb' : b ≤ 1)
+    (hc : 5/6 - 1/1000 + a ≤ c ∨ 99/100 ≤ c) :
+    2*a+(7/12)*b-c ≤ -(1/200) := by
+  rcases hc with hc | hc <;> linarith
+
 end InnerFloorResearch.DensityBudget
