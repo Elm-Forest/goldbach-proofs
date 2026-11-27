@@ -105,6 +105,7 @@ theorem eventualFixedBlockScale :
               (by linarith only [hdens])
           linarith only [H,hcp]
     apply (div_le_iff₀ (div_pos hhP hY)).2
+    rw [← mul_div_assoc]
     apply (le_div_iff₀ hY).2
     have H := mul_le_mul_of_nonneg_right hprod (Real.rpow_nonneg hY.le (5/12:ℝ))
     rw [mul_assoc,← Real.rpow_add hY,show (7/12:ℝ)+5/12=1 by norm_num,Real.rpow_one] at H
