@@ -27,6 +27,7 @@ jobs:
         run: |
           set -u
           export PATH="$HOME/.elan/bin:$PATH"
+          timeout 3600 lake build Conjectures.Goldbach.ShortProgressionsMeanTheta Conjectures.Goldbach.LowSkirtFromShortProgressions
           fail=0
           for proof in ../inner-research/*.lean; do
             echo "::group::$(basename "$proof")"
