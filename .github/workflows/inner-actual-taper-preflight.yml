@@ -14,14 +14,21 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          - InnerFloorActualTaperRealPartsGcdVerified
-          - InnerFloorActualResidualAssemblyVerified
-          - InnerFloorDensityArithmeticAndThresholdsVerified
-          - InnerFloorOccurrenceGlueInterfaceVerified
+          - InnerFloorOccurrenceBudgetVerified
+          - InnerFloorOccurrenceResidualVerified
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Restore community build objects
+        id: community
+        uses: actions/cache/restore@v4
+        with:
+          path: lean/.lake/build
+          key: inner-research-linux-x64-20261128-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-${{ github.run_id }}
+          restore-keys: |
+            inner-research-linux-x64-20261128-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-
+            inner-community-linux-x64-1fe24b28-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json', 'lean/lakefile.toml', 'lean/lakefile.lean') }}-
       - name: Set up pinned Lean and Mathlib
         working-directory: lean
         run: |
@@ -30,6 +37,7 @@ jobs:
           export PATH="$HOME/.elan/bin:$PATH"
           elan toolchain install "$(cat lean-toolchain)"
           lake exe cache get
+          time lake build Conjectures.Goldbach.DyadicCellShortPrimeFloor
       - name: Verify exact Colab-audited candidate in kernel
         working-directory: lean
         run: |
@@ -39,7 +47,7 @@ jobs:
           target="${{ matrix.target }}"
           python3 - "$target" <<'PYSHA'
           import sys, json, hashlib, pathlib
-          meta = json.loads('''{"InnerFloorActualTaperRealPartsGcdVerified": {"sha256": "da7b4bdc4d54f231b5364ebea63b003650408ec149b054869be10f4a6385b386", "count": 24, "last": "InnerFloorGaussPacket.dyadicGcdRatio_realParts_sum", "lines": 2487}, "InnerFloorActualResidualAssemblyVerified": {"sha256": "96ff11c27e2cce866b0e8f727e4f56c7ff89043a233ee513fafd9c66ac207a61", "count": 31, "last": "InnerFloorGaussPacket.actualPacketResidual", "lines": 2787}, "InnerFloorDensityArithmeticAndThresholdsVerified": {"sha256": "ab9bbce87fcfd31bc6421c8cc95f5ea64bfd5c2079316afec3c1656236ca7f40", "count": 8, "last": "InnerFloorResidualScale.aggregateBlockFloor", "lines": 172}, "InnerFloorOccurrenceGlueInterfaceVerified": {"sha256": "d69898ab3b09444cc48b3be7a3c45e5b311788060c10ef5a2e3da70353737c3e", "count": 18, "last": "InnerFloorOccurrence.denominatorResidualFloor", "lines": 752}}''')
+          meta = json.loads('''{"InnerFloorOccurrenceBudgetVerified": {"sha256": "5a3c54ae31566790e879e390c37036e303810e3c674f8d80af784dbb70886d69", "count": 6, "last": "InnerFloorOccurrence.pairNearOne", "lines": 171}, "InnerFloorOccurrenceResidualVerified": {"sha256": "6929a2c146d58732819cfeb9d4f5a7773d1a3aab312be6138fc1010819b851ae", "count": 44, "last": "InnerFloorOccurrence.denominatorResidualFloor", "lines": 3218}}''')
           t = sys.argv[1]
           p = pathlib.Path(f"Conjectures/Goldbach/{t}.lean")
           actual = hashlib.sha256(p.read_bytes()).hexdigest()
@@ -49,7 +57,7 @@ jobs:
           time lake env lean "Conjectures/Goldbach/$target.lean" 2>&1 | tee "/tmp/$target.log"
           python3 - "$target" <<'PYAX'
           import sys, pathlib, re, json
-          meta = json.loads('''{"InnerFloorActualTaperRealPartsGcdVerified": {"sha256": "da7b4bdc4d54f231b5364ebea63b003650408ec149b054869be10f4a6385b386", "count": 24, "last": "InnerFloorGaussPacket.dyadicGcdRatio_realParts_sum", "lines": 2487}, "InnerFloorActualResidualAssemblyVerified": {"sha256": "96ff11c27e2cce866b0e8f727e4f56c7ff89043a233ee513fafd9c66ac207a61", "count": 31, "last": "InnerFloorGaussPacket.actualPacketResidual", "lines": 2787}, "InnerFloorDensityArithmeticAndThresholdsVerified": {"sha256": "ab9bbce87fcfd31bc6421c8cc95f5ea64bfd5c2079316afec3c1656236ca7f40", "count": 8, "last": "InnerFloorResidualScale.aggregateBlockFloor", "lines": 172}, "InnerFloorOccurrenceGlueInterfaceVerified": {"sha256": "d69898ab3b09444cc48b3be7a3c45e5b311788060c10ef5a2e3da70353737c3e", "count": 18, "last": "InnerFloorOccurrence.denominatorResidualFloor", "lines": 752}}''')
+          meta = json.loads('''{"InnerFloorOccurrenceBudgetVerified": {"sha256": "5a3c54ae31566790e879e390c37036e303810e3c674f8d80af784dbb70886d69", "count": 6, "last": "InnerFloorOccurrence.pairNearOne", "lines": 171}, "InnerFloorOccurrenceResidualVerified": {"sha256": "6929a2c146d58732819cfeb9d4f5a7773d1a3aab312be6138fc1010819b851ae", "count": 44, "last": "InnerFloorOccurrence.denominatorResidualFloor", "lines": 3218}}''')
           t = sys.argv[1]
           log = pathlib.Path('/tmp/' + t + '.log').read_text()
           assert 'sorryAx' not in log and 'error:' not in log, log[-1000:]
