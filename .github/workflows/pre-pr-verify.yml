@@ -23,7 +23,7 @@ jobs:
       - name: Verify exact single-file pre-PR candidate in kernel
         run: |
           cd lean
-          echo "b65a76c87e8876821fed1e0760a07896331c155f687fd89d4403745a47d0e525  Conjectures/Goldbach/WideRemainderInnerFloor.lean" | sha256sum -c -
+          echo "32fbe75a08979378e124ac1d3a3c72b99aa5cc5a8ee9f7e160572b87e1e10e7e  Conjectures/Goldbach/WideRemainderInnerFloor.lean" | sha256sum -c -
           lake env lean Conjectures/Goldbach/WideRemainderInnerFloor.lean 2>&1 | tee /tmp/pre_pr_verify.log
           python3 - << 'PY'
           import pathlib, re
@@ -31,7 +31,7 @@ jobs:
           assert 'sorryAx' not in log, 'Found sorryAx!'
           assert 'error:' not in log, 'Found error!'
           matches = re.findall(r'depends on axioms: \[([^\]]*)\]', log)
-          assert len(matches) == 59, f'Expected 59 axiom audits, got {len(matches)}'
+          assert len(matches) == 73, f'Expected 73 axiom audits, got {len(matches)}'
           for m in matches:
               axs = {a.strip() for a in m.split(',') if a.strip()}
               assert axs <= {'propext', 'Classical.choice', 'Quot.sound'}, f'Unexpected axioms: {axs}'

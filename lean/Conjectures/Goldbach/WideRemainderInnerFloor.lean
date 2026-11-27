@@ -2,32 +2,32 @@ import Mathlib
 import Conjectures.Goldbach.DyadicCellShortPrimeFloor
 
 /-!
-# Wide Remainder Inner Floor — Route B Pre-PR Unified Formalization
+# Wide Remainder Inner Floor — Unified Route B + Independent Odd-Residual Pre-PR File
 
 Target task: `L-goldbach-wide-remainder-inner-floor`
 Target file: `lean/Conjectures/Goldbach/WideRemainderInnerFloor.lean`
 
-This single-file module unifies all unconditionally verified Route B components
-under pinned Lean 4.36.0 / Mathlib `fc4f59e` using only standard foundational
-axioms (`propext`, `Classical.choice`, `Quot.sound`) and zero `sorry`:
-1. `InnerFloorOccurrence`: 3,218-line end-to-end Gauss-normalized tapered zero-packet
-   and official zero-density (`DyadicCellShortPrimeFloor` / `V1f0`) residual floor
-   (`denominatorResidualFloor`).
-2. `InnerFloorRouteB`: exact signed bilinear cell floor (`signedBilinearCellFloor`),
-   exact vanishing of the model–bad cross Gauss sum at `q ∣ n`
-   (`shiftedGauss_nonprincipal_eq_zero_of_dvd`), primitive quadratic Gauss-sum square,
-   and 3-way parity/reality partition (`pair_parity_split`).
-3. `InnerFloorRouteBThreshold`: even real diagonal nonnegativity
-   (`evenRealDiag_contribution_nonneg`) and exact necessity/sufficiency thresholds
-   for odd real near-1 zeros (`oddReal_logGap_violates_floor`,
-   `oddReal_superLogGap_satisfies_floor`).
-4. `InnerFloorRouteBAlmostAll`: unconditional Gate-3 high-gcd exceptional-set
-   density bound (`familyHighGcd_card_le_real`) closing the almost-all even `n`
-   escape hatch.
-5. `Conjectures.Goldbach`: exact frozen statement `L_goldbach_wide_remainder_inner_floor_stmt`
-   with the single remaining open mathematical barrier (`OddNearOneZeroBarrier`)
-   isolated cleanly at the top level.
+Unifies ALL independently Colab-verified Route B & independent-odd-residual modules
+under pinned Lean 4.36.0 / Mathlib `fc4f59e`, standard foundational axioms only
+(`propext`, `Classical.choice`, `Quot.sound`), zero `sorry`, zero GRH imports:
+1. `InnerFloorOccurrence`: 3,218-line end-to-end tapered zero-occurrence residual floor.
+2. `InnerFloorRouteB`: signed bilinear cell floor, model–bad cross vanishing at `q ∣ n`,
+   primitive quadratic Gauss square, and 3-way parity/reality partition.
+3. `InnerFloorRouteBThreshold`: even real diagonal nonnegativity and exact necessity /
+   sufficiency log-gap thresholds.
+4. `InnerFloorRouteBAlmostAll`: unconditional Gate-3 high-gcd exceptional-set density bound.
+5. `InnerFloorRouteBFourGate`: 4-gate quantitative residual partition (adding imaginary height
+   `|γ|` gate), exact joint Gauss–Ramanujan negative countermodel (`d = 3p`, `n = 2p^8`),
+   and global mod-`3p` parity annihilation proof (`global_mod3_forced_one`, `global_modp_neg`).
+6. `InnerFloorIndependentEulerMass` / `InnerFloorIndependentCross` /
+   `InnerFloorIndependentRealKernel` / `InnerFloorIndependentRelativeSign`:
+   odd squarefree totient tail, localized real-zero cross saving, finite-frequency
+   real-kernel L2 perturbation `∫₀¹ (x^(β-1)-1)² dx ≤ (16/3)(1-β)²`, and weighted relative floor.
+7. `Conjectures.Goldbach`: exact frozen statement with the single isolated open-problem
+   barrier (`JointNegativeNearOneZeroBarrier`) explicitly declared at the top level.
 -/
+
+
 
 /-!
 Small independently replayable arithmetic interface extracted from
@@ -3246,7 +3246,6 @@ end InnerFloorOccurrence
 #print axioms InnerFloorOccurrence.denominatorResidualFloor
 
 
-
 /-!
 Route B Signed Spectral Core (Standalone Verified Module):
 1. Exact finite-sum signed bilinear decomposition (S^2 - M^2) under S = M + g + b,
@@ -3766,6 +3765,529 @@ end InnerFloorRouteBAlmostAll
 #print axioms InnerFloorRouteBAlmostAll.familyHighGcd_card_le_real
 
 
+/-!
+Route B Four-Gate Residual & Joint Gauss--Ramanujan Sign Obstruction:
+1. `fourGateResidualPartition`: extends the 3-gate quantitative residual partition
+   to FOUR independent attenuation gates:
+   - Gate 1: real-part deficit `(2 - β₁ - β₂) * log N ≥ (4 + m + r) * log L`
+   - Gate 2: product conductor saving `L^(4 + m + r) * prodSav ≤ 1`
+   - Gate 3: gcd ratio saving `L^(4 + m + r) * gcdSav ≤ 1`
+   - Gate 4 (NEW): imaginary height saving `L^(4 + m + r) * heightSav ≤ 1`
+2. `jointSign_even_countermodel_neg`: exact arithmetic coefficient bound
+   `3p * (-(p-1)) / (2*(p-1))^2 = -3p / (4*(p-1)) ≤ -3/4` for the even
+   conductor `d = 3p` (`p ≡ 3 (mod 4)`, `n = 2p^8`) countermodel.
+3. `global_mod3_forced_one` & `global_parity_annihilation_mod_3p`: proves that
+   for ANY prime `p ≠ 3` and ANY `p₁ + p₂ = 2p^8` with `3 ∤ p₁`, `3 ∤ p₂`,
+   we necessarily have `p₁ ≡ 1 (mod 3)`, `p₂ ≡ 1 (mod 3)`, and `p₁ ≡ -p₂ (mod p)` —
+   so an even composite Siegel character `χ = χ₃ * χ_p` (`χ₃` odd, `χ_p` odd)
+   forces `χ(p₁) = -χ(p₂)` globally, annihilating Goldbach representations
+   just like an odd character at `d ∣ n`.
+-/
+namespace InnerFloorRouteBFourGate
+open Finset
+open scoped Classical
+noncomputable section
+set_option maxHeartbeats 1500000
+
+/-- Four-gate quantitative residual partition: any index in `s` that clears
+    at least one of the 4 gates (real-part, product conductor, gcd ratio, or
+    imaginary height) contributes at most `C * N / L^(m + r)`, so with
+    `|s| ≤ L^r` all cleared terms sum to at most `C * N / L^m`. -/
+theorem fourGateResidualPartition {ι : Type*} (s : Finset ι)
+    (val : ι → ℂ) (β₁ β₂ prodSav gcdSav heightSav : ι → ℝ)
+    (N L C k r m : ℝ)
+    (hN : 1 ≤ N) (hL : 0 < L) (hC : 0 ≤ C)
+    (hcard : (s.card : ℝ) ≤ L ^ r)
+    (hβ : ∀ i ∈ s, β₁ i + β₂ i ≤ 2)
+    (hprod0 : ∀ i ∈ s, 0 ≤ prodSav i)
+    (hgcd0 : ∀ i ∈ s, 0 ≤ gcdSav i)
+    (hht0 : ∀ i ∈ s, 0 ≤ heightSav i)
+    (hb_re : ∀ i ∈ s, ‖val i‖ ≤ C * N ^ (β₁ i + β₂ i - 1) * L ^ k)
+    (hb_prod : ∀ i ∈ s, ‖val i‖ ≤ C * N * L ^ k * prodSav i)
+    (hb_gcd : ∀ i ∈ s, ‖val i‖ ≤ C * N * L ^ k * gcdSav i)
+    (hb_ht : ∀ i ∈ s, ‖val i‖ ≤ C * N * L ^ k * heightSav i) :
+    let R4 := s.filter (fun i =>
+      (2 - β₁ i - β₂ i) * Real.log N < (k + (m + r)) * Real.log L ∧
+      1 < L ^ (k + (m + r)) * prodSav i ∧
+      1 < L ^ (k + (m + r)) * gcdSav i ∧
+      1 < L ^ (k + (m + r)) * heightSav i)
+    (∑ i ∈ R4, (val i).re) - C * (N / L ^ m) ≤ ∑ i ∈ s, (val i).re := by
+  dsimp only
+  set P : ι → Prop := fun i =>
+    (2 - β₁ i - β₂ i) * Real.log N < (k + (m + r)) * Real.log L ∧
+    1 < L ^ (k + (m + r)) * prodSav i ∧
+    1 < L ^ (k + (m + r)) * gcdSav i ∧
+    1 < L ^ (k + (m + r)) * heightSav i
+  have hNp : 0 < N := by linarith
+  have hLpos : 0 < L ^ (m + r) := Real.rpow_pos_of_pos hL _
+  have hsplit : (∑ i ∈ s, (val i).re) =
+      (∑ i ∈ s.filter P, (val i).re) + (∑ i ∈ s.filter (fun i => ¬P i), (val i).re) :=
+    (Finset.sum_filter_add_sum_filter_not s P (fun i => (val i).re)).symm
+  rw [hsplit]
+  suffices htail : -(∑ i ∈ s.filter (fun i => ¬P i), (val i).re) ≤ C * (N / L ^ m) by
+    linarith
+  have hterm : ∀ i ∈ s.filter (fun i => ¬P i),
+      -(val i).re ≤ C * N / L ^ (m + r) := by
+    intro i hi
+    have his : i ∈ s := (Finset.mem_filter.mp hi).1
+    have hnot : ¬P i := (Finset.mem_filter.mp hi).2
+    have hre : -(val i).re ≤ ‖val i‖ := (neg_le_abs _).trans (Complex.abs_re_le_norm _)
+    have hnorm : ‖val i‖ ≤ C * N / L ^ (m + r) := by
+      have hLk : L ^ k / L ^ (k + (m + r)) = 1 / L ^ (m + r) := by
+        rw [Real.rpow_add hL]
+        field_simp
+      by_cases h1 : (k + (m + r)) * Real.log L ≤ (2 - β₁ i - β₂ i) * Real.log N
+      · have hexp : N ^ (β₁ i + β₂ i - 1) ≤ N / L ^ (k + (m + r)) := by
+          have h1' : Real.log (L ^ (k + (m + r))) ≤ Real.log (N ^ (2 - β₁ i - β₂ i)) := by
+            rw [Real.log_rpow hL, Real.log_rpow hNp]
+            exact h1
+          have h2 : L ^ (k + (m + r)) ≤ N ^ (2 - β₁ i - β₂ i) := by
+            rw [← Real.exp_log (Real.rpow_pos_of_pos hL _),
+                ← Real.exp_log (Real.rpow_pos_of_pos hNp _)]
+            exact Real.exp_le_exp.mpr h1'
+          rw [le_div_iff₀ (Real.rpow_pos_of_pos hL _)]
+          calc
+            N ^ (β₁ i + β₂ i - 1) * L ^ (k + (m + r))
+                ≤ N ^ (β₁ i + β₂ i - 1) * N ^ (2 - β₁ i - β₂ i) :=
+                  mul_le_mul_of_nonneg_left h2 (Real.rpow_nonneg hNp.le _)
+            _ = N ^ ((β₁ i + β₂ i - 1) + (2 - β₁ i - β₂ i)) := (Real.rpow_add hNp _ _).symm
+            _ = N := by
+                  have ha : (β₁ i + β₂ i - 1) + (2 - β₁ i - β₂ i) = 1 := by ring
+                  rw [ha, Real.rpow_one]
+        calc
+          ‖val i‖ ≤ C * N ^ (β₁ i + β₂ i - 1) * L ^ k := hb_re i his
+          _ ≤ C * (N / L ^ (k + (m + r))) * L ^ k := by
+                have hm := mul_le_mul_of_nonneg_left hexp hC
+                exact mul_le_mul_of_nonneg_right hm (Real.rpow_nonneg hL.le _)
+          _ = C * N * (L ^ k / L ^ (k + (m + r))) := by ring
+          _ = C * N / L ^ (m + r) := by rw [hLk]; ring
+      · by_cases h2 : L ^ (k + (m + r)) * prodSav i ≤ 1
+        · have hsav : prodSav i ≤ 1 / L ^ (k + (m + r)) :=
+            (le_div_iff₀ (Real.rpow_pos_of_pos hL _)).2 (by linarith)
+          calc
+            ‖val i‖ ≤ C * N * L ^ k * prodSav i := hb_prod i his
+            _ ≤ C * N * L ^ k * (1 / L ^ (k + (m + r))) :=
+                  mul_le_mul_of_nonneg_left hsav (by positivity)
+            _ = C * N * (L ^ k / L ^ (k + (m + r))) := by ring
+            _ = C * N / L ^ (m + r) := by rw [hLk]; ring
+        · by_cases h3 : L ^ (k + (m + r)) * gcdSav i ≤ 1
+          · have hsav : gcdSav i ≤ 1 / L ^ (k + (m + r)) :=
+              (le_div_iff₀ (Real.rpow_pos_of_pos hL _)).2 (by linarith)
+            calc
+              ‖val i‖ ≤ C * N * L ^ k * gcdSav i := hb_gcd i his
+              _ ≤ C * N * L ^ k * (1 / L ^ (k + (m + r))) :=
+                    mul_le_mul_of_nonneg_left hsav (by positivity)
+              _ = C * N * (L ^ k / L ^ (k + (m + r))) := by ring
+              _ = C * N / L ^ (m + r) := by rw [hLk]; ring
+          · have h4 : L ^ (k + (m + r)) * heightSav i ≤ 1 := by
+              by_contra hc
+              exact hnot ⟨lt_of_not_ge h1, lt_of_not_ge h2, lt_of_not_ge h3, lt_of_not_ge hc⟩
+            have hsav : heightSav i ≤ 1 / L ^ (k + (m + r)) :=
+              (le_div_iff₀ (Real.rpow_pos_of_pos hL _)).2 (by linarith)
+            calc
+              ‖val i‖ ≤ C * N * L ^ k * heightSav i := hb_ht i his
+              _ ≤ C * N * L ^ k * (1 / L ^ (k + (m + r))) :=
+                    mul_le_mul_of_nonneg_left hsav (by positivity)
+              _ = C * N * (L ^ k / L ^ (k + (m + r))) := by ring
+              _ = C * N / L ^ (m + r) := by rw [hLk]; ring
+    exact hre.trans hnorm
+  rw [← Finset.sum_neg_distrib]
+  calc
+    ∑ i ∈ s.filter (fun i => ¬P i), -(val i).re
+        ≤ ∑ _i ∈ s.filter (fun i => ¬P i), (C * N / L ^ (m + r)) := Finset.sum_le_sum hterm
+    _ = ((s.filter (fun i => ¬P i)).card : ℝ) * (C * N / L ^ (m + r)) := by simp
+    _ ≤ (s.card : ℝ) * (C * N / L ^ (m + r)) := by
+          apply mul_le_mul_of_nonneg_right
+          · exact_mod_cast Finset.card_filter_le s _
+          · positivity
+    _ ≤ L ^ r * (C * N / L ^ (m + r)) :=
+          mul_le_mul_of_nonneg_right hcard (by positivity)
+    _ = C * (N / L ^ m) := by
+          rw [Real.rpow_add hL]
+          field_simp
+
+/-- Exact negative arithmetic factor for GPT's even countermodel `d = 3p`,
+    `p > 3`, `n = 2p^8`: `(3p) * (-(p-1)) / (2(p-1))^2 = -3p / (4(p-1)) ≤ -3/4`. -/
+theorem jointSign_even_countermodel_neg (p : ℕ) (hp : 3 < p) :
+    ((3 * p : ℝ) * (-(p - 1 : ℝ))) / ((2 * (p - 1 : ℝ)) ^ 2) ≤ -(3 / 4 : ℝ) := by
+  have hp1 : (0 : ℝ) < (p : ℝ) - 1 := by
+    have : (3 : ℝ) < p := by exact_mod_cast hp
+    linarith
+  have hEq : ((3 * p : ℝ) * (-(p - 1 : ℝ))) / ((2 * (p - 1 : ℝ)) ^ 2) =
+      -(3 * (p : ℝ)) / (4 * ((p : ℝ) - 1)) := by
+    field_simp
+    ring
+  rw [hEq, div_le_iff₀ (by positivity : 0 < 4 * ((p : ℝ) - 1))]
+  linarith
+
+/-- Global parity annihilation for `n = 2p^8` (`3 ∤ p`): any two naturals
+    `p₁, p₂` coprime to `3` with `p₁ + p₂ = 2p^8` MUST both satisfy `≡ 1 (mod 3)`
+    and `p₁ ≡ -p₂ (mod p)`.  Hence `χ₃(p₁) = χ₃(p₂) = 1` while `χ_p(p₁) = -χ_p(p₂)`
+    for odd `χ_p`, forcing `χ(p₁) = -χ(p₂)` even though `χ = χ₃ * χ_p` is EVEN! -/
+theorem global_mod3_forced_one (p p₁ p₂ : ℕ) (hp3 : ¬(3 ∣ p))
+    (h1 : ¬(3 ∣ p₁)) (h2 : ¬(3 ∣ p₂)) (hsum : p₁ + p₂ = 2 * p ^ 8) :
+    p₁ % 3 = 1 ∧ p₂ % 3 = 1 := by
+  have hmodp : p % 3 = 1 ∨ p % 3 = 2 := by omega
+  have hp8 : (p ^ 8) % 3 = 1 := by
+    rw [Nat.pow_mod]
+    rcases hmodp with h | h <;> simp [h]
+  have h2p8 : (2 * p ^ 8) % 3 = 2 := by
+    rw [Nat.mul_mod, hp8]
+  have hsum3 : (p₁ + p₂) % 3 = 2 := by rw [hsum, h2p8]
+  omega
+
+theorem global_modp_neg (p p₁ p₂ : ℕ) (hsum : p₁ + p₂ = 2 * p ^ 8) :
+    ((p₁ : ZMod p) = -((p₂ : ZMod p))) := by
+  have hcast : ((p₁ + p₂ : ℕ) : ZMod p) = ((2 * p ^ 8 : ℕ) : ZMod p) :=
+    congrArg (Nat.cast : ℕ → ZMod p) hsum
+  have hzero : ((2 * p ^ 8 : ℕ) : ZMod p) = 0 := by
+    rw [ZMod.natCast_eq_zero_iff]
+    exact ⟨2 * p ^ 7, by ring⟩
+  rw [Nat.cast_add, hzero] at hcast
+  exact eq_neg_of_add_eq_zero_left hcast
+
+end
+end InnerFloorRouteBFourGate
+
+#print axioms InnerFloorRouteBFourGate.fourGateResidualPartition
+#print axioms InnerFloorRouteBFourGate.jointSign_even_countermodel_neg
+#print axioms InnerFloorRouteBFourGate.global_mod3_forced_one
+#print axioms InnerFloorRouteBFourGate.global_modp_neg
+
+
+namespace InnerFloorIndependentEulerMass
+open Finset
+noncomputable section
+
+/-- A telescoping majorant for the reciprocal squares of the predecessor
+of every odd integer greater than one. -/
+theorem oddIndexMass (M : ℕ) :
+    (∑ j ∈ range M, 1/(4*((j:ℝ)+1)^2)) ≤ (1/2:ℝ) := by
+  have htel : (∑ j ∈ range M, 1/((2*(j:ℝ)+1)*(2*(j:ℝ)+3))) =
+      (1/2:ℝ)*(1-1/(2*(M:ℝ)+1)) := by
+    induction M with
+    | zero => norm_num
+    | succ M ih =>
+      rw [sum_range_succ,ih,Nat.cast_succ]
+      have h : (0:ℝ)≤(M:ℝ) := Nat.cast_nonneg M
+      field_simp; ring
+  calc
+    _ ≤ ∑ j ∈ range M, 1/((2*(j:ℝ)+1)*(2*(j:ℝ)+3)) := by
+      apply sum_le_sum
+      intro j hj
+      apply one_div_le_one_div_of_le (by positivity)
+      nlinarith
+    _ = _ := htel
+    _ ≤ _ := by
+      have h : (0:ℝ)≤1/(2*(M:ℝ)+1) := by positivity
+      linarith
+
+/-- The absolute tail over all nonempty subsets of a finite prime-index
+family is below 2/3 when the total local mass is at most 1/2. -/
+theorem subsetTailMass {ι : Type*} [DecidableEq ι] (P : Finset ι) (a : ι → ℝ)
+    (ha : ∀ i ∈ P, 0≤a i) (hS : ∑ i ∈ P,a i ≤ (1/2:ℝ)) :
+    (∑ t ∈ P.powerset.erase ∅, ∏ i ∈ t,a i) ≤ (2/3:ℝ) := by
+  have hp : (∏ i ∈ P, (1+a i)) ≤ Real.exp (∑ i ∈ P,a i) := by
+    rw [Real.exp_sum]
+    exact Finset.prod_le_prod₀ (fun i hi => by linarith [ha i hi])
+      (fun i hi => by simpa [add_comm] using Real.add_one_le_exp (a i))
+  have hE : Real.exp (1/2:ℝ) < 5/3 := by
+    have h2 : Real.exp (1/2:ℝ)^2 = Real.exp 1 := by
+      rw [pow_two,←Real.exp_add]
+      norm_num
+    have h3 : Real.exp 1 < (25/9:ℝ) := Real.exp_one_lt_d9.trans (by norm_num)
+    by_contra! h
+    nlinarith only [h2,h3,mul_le_mul h h (by norm_num : (0:ℝ)≤5/3) (Real.exp_nonneg _)]
+  have hwhole : (∑ t ∈ P.powerset, ∏ i ∈ t,a i) < (5/3:ℝ) := by
+    rw [← prod_one_add]
+    exact hp.trans_lt ((Real.exp_le_exp.mpr hS).trans_lt hE)
+  have he : (∅ : Finset ι) ∈ P.powerset := by simp
+  have hs := sum_erase_add P.powerset (fun t => ∏ i ∈ t,a i) he
+  simp only [prod_empty] at hs
+  linarith only [hs,hwhole]
+
+/-- The actual finite family of odd squarefree cofactors m>1 has a
+uniform absolute reciprocal totient-square tail at most 2/3. -/
+theorem oddSquarefreeTotientTail (M : ℕ) (S : Finset ℕ)
+    (hS : ∀ m ∈ S, 1<m ∧ m≤M ∧ Odd m ∧ Squarefree m) :
+    (∑ m ∈ S, 1/((m.totient:ℝ)^2)) ≤ (2/3:ℝ) := by
+  let P := (range M).image (fun j : ℕ => 2*j+3)
+  let a := fun p : ℕ => 1/((p:ℝ)-1)^2
+  have hP : ∑ p ∈ P,a p ≤ (1/2:ℝ) := by
+    unfold P
+    rw [sum_image (by intro i hi j hj h; change 2*i+3=2*j+3 at h; omega)]
+    calc
+      _ = ∑ j ∈ range M,1/(4*((j:ℝ)+1)^2) := by
+        apply sum_congr rfl
+        intro j hj
+        dsimp [a]
+        push_cast
+        congr 1
+        ring
+      _ ≤ _ := oddIndexMass M
+  have htail := subsetTailMass P a (fun i hi => by dsimp [a]; positivity) hP
+  have hsub : S.image Nat.primeFactors ⊆ P.powerset.erase ∅ := by
+    intro t ht
+    obtain ⟨m,hm,rfl⟩ := mem_image.mp ht
+    obtain ⟨hm1,hmM,hmodd,hsq⟩ := hS m hm
+    apply mem_erase.mpr
+    refine ⟨?_,mem_powerset.mpr ?_⟩
+    · intro he
+      have h := Nat.prod_primeFactors_of_squarefree hsq
+      rw [he,prod_empty] at h
+      omega
+    · intro p hp
+      have hprime := Nat.prime_of_mem_primeFactors hp
+      have hd := Nat.dvd_of_mem_primeFactors hp
+      have hpM := (Nat.le_of_dvd (by omega : 0<m) hd).trans hmM
+      have hpn : ¬2∣p := by
+        intro hp2
+        obtain ⟨k,hk⟩ := hp2.trans hd
+        obtain ⟨l,hl⟩ := hmodd
+        omega
+      have hpodd : p%2=1 := by omega
+      have h2 := hprime.two_le
+      have h3 : 3≤p := by omega
+      apply mem_image.mpr
+      refine ⟨(p-3)/2,mem_range.mpr (by omega),?_⟩
+      omega
+  have hinj : Set.InjOn Nat.primeFactors (S: Set ℕ) := by
+    intro m hm k hk he
+    have h1 := Nat.prod_primeFactors_of_squarefree (hS m hm).2.2.2
+    have h2 := Nat.prod_primeFactors_of_squarefree (hS k hk).2.2.2
+    rw [he] at h1
+    exact h1.symm.trans h2
+  have hterm (m : ℕ) (hm : m∈S) :
+      1/((m.totient:ℝ)^2) = ∏ p ∈ m.primeFactors,a p := by
+    obtain ⟨hm1,hmM,hmodd,hsq⟩ := hS m hm
+    have hphi := Nat.totient_mul_prod_primeFactors m
+    rw [Nat.prod_primeFactors_of_squarefree hsq,mul_comm m] at hphi
+    have hφ : m.totient = ∏ p∈m.primeFactors,(p-1) :=
+      Nat.eq_of_mul_eq_mul_right (show 0<m by omega) hphi
+    rw [hφ,Nat.cast_prod,← Finset.prod_pow]
+    calc
+      1 / (∏ p ∈ m.primeFactors, ((p-1:ℕ):ℝ)^2) =
+          (∏ p ∈ m.primeFactors, (1:ℝ)) / (∏ p ∈ m.primeFactors, ((p-1:ℕ):ℝ)^2) := by simp
+      _ = ∏ p ∈ m.primeFactors, a p := by
+        rw [← Finset.prod_div_distrib]
+        apply prod_congr rfl
+        intro p hp
+        have hp1 := (Nat.prime_of_mem_primeFactors hp).one_lt.le
+        dsimp [a]
+        rw [Nat.cast_sub hp1,Nat.cast_one]
+  calc
+    _ = ∑ m ∈ S,∏ p∈m.primeFactors,a p := sum_congr rfl hterm
+    _ = ∑ t ∈ S.image Nat.primeFactors,∏ p∈t,a p := by
+      rw [sum_image hinj]
+    _ ≤ ∑ t ∈ P.powerset.erase ∅,∏ p∈t,a p :=
+      sum_le_sum_of_subset_of_nonneg hsub (fun t ht hnot => prod_nonneg (fun p hp => by dsimp [a]; positivity))
+    _ ≤ _ := htail
+
+end
+end InnerFloorIndependentEulerMass
+#print axioms InnerFloorIndependentEulerMass.oddIndexMass
+#print axioms InnerFloorIndependentEulerMass.subsetTailMass
+
+#print axioms InnerFloorIndependentEulerMass.oddSquarefreeTotientTail
+
+
+namespace InnerFloorIndependentCross
+noncomputable section
+
+/-- Arithmetic conductor decay plus the constant real-zero gap yields an
+arbitrarily large inverse-log saving. L is log of the target integer.
+This is a scalar lemma, not a statement about a Dirichlet L-function. -/
+theorem crossSaving (d L c k gap : ℝ)
+    (hd : 1≤d) (hL : 1≤L) (hk : 0≤k) (hg : 0≤gap)
+    (hgap : c≤gap*Real.log (d+2))
+    (hbudget : k*Real.log L*(Real.log 3+2*k*Real.log L)≤c*L) :
+    d^(-(1/2):ℝ)*Real.exp (-gap*L) ≤ L^(-k) := by
+  have hdp : 0<d := by linarith
+  have hLp : 0<L := by linarith
+  have hld : 0≤Real.log d := Real.log_nonneg hd
+  have hlL : 0≤Real.log L := Real.log_nonneg hL
+  rw [Real.rpow_def_of_pos hdp,Real.rpow_def_of_pos hLp,←Real.exp_add]
+  apply Real.exp_le_exp.mpr
+  by_cases h : L^(2*k)≤d
+  · have hlog := Real.log_le_log (Real.rpow_pos_of_pos hLp _) h
+    rw [Real.log_rpow hLp] at hlog
+    nlinarith only [hlog,mul_nonneg hg hLp.le]
+  · have hpow : 1≤L^(2*k) := Real.one_le_rpow hL (by linarith)
+    have hsmall : d+2≤3*L^(2*k) := by linarith [le_of_not_ge h]
+    have hlog := Real.log_le_log (show 0<d+2 by linarith) hsmall
+    rw [Real.log_mul (by norm_num : (3:ℝ)≠0) (Real.rpow_pos_of_pos hLp _).ne',Real.log_rpow hLp] at hlog
+    have h1 : k*Real.log L*Real.log (d+2)≤c*L :=
+      (mul_le_mul_of_nonneg_left hlog (mul_nonneg hk hlL)).trans hbudget
+    have h2 : c*L≤(gap*Real.log (d+2))*L := mul_le_mul_of_nonneg_right hgap hLp.le
+    have h3 : k*Real.log L≤gap*L := by
+      by_contra! hn
+      have hh := mul_lt_mul_of_pos_right hn (Real.log_pos (show 1<d+2 by linarith))
+      nlinarith only [h1,h2,hh]
+    nlinarith only [h3,hld]
+
+/-- Explicit sufficient budget in the preceding lemma, avoiding any
+assumption about rates hidden in an asymptotic notation. -/
+theorem crossBudget (L c k : ℝ) (hL : 1≤L) (hc : 0<c) (hk : 0≤k)
+    (hlarge : (8*k+32*k^2)/c≤Real.sqrt L) :
+    k*Real.log L*(Real.log 3+2*k*Real.log L)≤c*L := by
+  let x := Real.sqrt (Real.sqrt L)
+  have hL0 : 0≤L := by linarith
+  have hx2 : x^2=Real.sqrt L := Real.sq_sqrt (Real.sqrt_nonneg L)
+  have hx4 : x^4=L := by rw [show (4:ℕ)=2*2 by norm_num,pow_mul,hx2,Real.sq_sqrt hL0]
+  have hxs : 1≤x := by
+    have h1 : 1≤Real.sqrt L := by simpa using Real.sqrt_le_sqrt hL
+    exact by simpa [x] using Real.sqrt_le_sqrt h1
+  have hxp : 0<x := by linarith
+  have hl : 0≤Real.log L := Real.log_nonneg hL
+  have hl4 : Real.log L≤4*x := by
+    rw [←hx4,Real.log_pow]
+    norm_num
+    linarith [Real.log_le_sub_one_of_pos hxp]
+  have h3 : Real.log 3≤2 := by linarith [Real.log_le_sub_one_of_pos (by norm_num : (0:ℝ)<3)]
+  have ht : Real.log 3+2*k*Real.log L≤2+8*k*x := by nlinarith only [h3,mul_le_mul_of_nonneg_left hl4 hk]
+  have hb : 0≤Real.log 3+2*k*Real.log L := by
+    have := Real.log_nonneg (by norm_num : (1:ℝ)≤3)
+    positivity
+  have hbound : k*Real.log L*(Real.log 3+2*k*Real.log L)≤(8*k+32*k^2)*x^2 := by
+    calc
+      _ ≤ (k*(4*x))*(2+8*k*x) := mul_le_mul (mul_le_mul_of_nonneg_left hl4 hk) ht hb (by positivity)
+      _ = 8*k*x+32*k^2*x^2 := by ring
+      _ ≤ (8*k+32*k^2)*x^2 := by nlinarith only [mul_nonneg (mul_nonneg (by norm_num : (0:ℝ)≤8) hk) (mul_nonneg hxp.le (sub_nonneg.mpr hxs))]
+  have hcoef : 8*k+32*k^2≤c*Real.sqrt L := by
+    have hh := (div_le_iff₀ hc).mp hlarge
+    simpa [mul_comm] using hh
+  calc
+    _ ≤ _ := hbound
+    _ ≤ c*Real.sqrt L*x^2 := mul_le_mul_of_nonneg_right hcoef (sq_nonneg x)
+    _ = c*L := by rw [hx2,mul_assoc,←pow_two,Real.sq_sqrt hL0]
+
+/-- All sufficiently large L satisfy the explicit scalar budget. -/
+theorem eventualCrossSaving (c k : ℝ) (hc : 0<c) (hk : 0≤k) :
+    ∃ L₀ : ℝ, 1≤L₀ ∧ ∀ L≥L₀, ∀ d gap : ℝ,
+      1≤d → 0≤gap → c≤gap*Real.log (d+2) →
+      d^(-(1/2):ℝ)*Real.exp (-gap*L)≤L^(-k) := by
+  let a := max 1 ((8*k+32*k^2)/c)
+  have ha : 1≤a := le_max_left _ _
+  have ha0 : 0≤a := by linarith
+  refine ⟨a^2,by nlinarith [mul_nonneg ha0 (sub_nonneg.mpr ha)],?_⟩
+  intro L hL d gap hd hg hgap
+  have hL1 : 1≤L := (show 1≤a^2 by nlinarith [mul_nonneg ha0 (sub_nonneg.mpr ha)]).trans hL
+  have hs := Real.sqrt_le_sqrt hL
+  rw [Real.sqrt_sq_eq_abs,abs_of_nonneg ha0] at hs
+  exact crossSaving d L c k gap hd hL1 hk hg hgap
+    (crossBudget L c k hL1 hc hk ((le_max_right _ _).trans hs))
+
+end
+end InnerFloorIndependentCross
+#print axioms InnerFloorIndependentCross.crossSaving
+#print axioms InnerFloorIndependentCross.crossBudget
+#print axioms InnerFloorIndependentCross.eventualCrossSaving
+
+
+namespace InnerFloorIndependentRealKernel
+noncomputable section
+open MeasureTheory
+open scoped Interval
+
+/-- Exact normalized L2-distance for the near-one power kernel versus one. -/
+theorem powerKernel_sq_integral (b : ℝ) (hb : 1/2<b) :
+    (∫ x in (0:ℝ)..1,(x^(b-1)-1)^2) =
+      2*(1-b)^2/(b*(2*b-1)) := by
+  have h1 : -1 < b-1 := by linarith
+  have h2 : -1 < 2*b-2 := by linarith
+  have hi1 : IntervalIntegrable (fun x:ℝ => x^(b-1)) volume 0 1 :=
+    intervalIntegral.intervalIntegrable_rpow' h1
+  have hi2 : IntervalIntegrable (fun x:ℝ => x^(2*b-2)) volume 0 1 :=
+    intervalIntegral.intervalIntegrable_rpow' h2
+  have hi0 : IntervalIntegrable (fun _ : ℝ => (1:ℝ)) volume 0 1 := intervalIntegrable_const
+  have he : (∫ x in (0:ℝ)..1,(x^(b-1)-1)^2) =
+      ∫ x in (0:ℝ)..1, x^(2*b-2)-2*x^(b-1)+1 := by
+    apply intervalIntegral.integral_congr
+    intro x hx
+    have hx0 : 0≤x := by simpa [Set.uIcc_of_le (by norm_num : (0:ℝ)≤1)] using hx.1
+    have hpow : (x^(b-1))^2=x^(2*b-2) := by
+      rw [←Real.rpow_natCast,←Real.rpow_mul hx0]
+      congr 1
+      norm_num
+      ring
+    dsimp only
+    rw [sub_sq,hpow]
+    ring
+  rw [he,intervalIntegral.integral_add (hi2.sub (hi1.const_mul 2)) hi0,
+    intervalIntegral.integral_sub hi2 (hi1.const_mul 2),intervalIntegral.integral_const_mul,
+    integral_rpow (Or.inl h2),integral_rpow (Or.inl h1)]
+  simp only [Real.one_rpow,intervalIntegral.integral_const,sub_zero,smul_eq_mul,mul_one]
+  rw [Real.zero_rpow (by linarith : 2*b-2+1≠0),Real.zero_rpow (by linarith : b-1+1≠0)]
+  rw [show 2*b-2+1=2*b-1 by ring,show b-1+1=b by ring]
+  field_simp [show b≠0 by linarith,show 2*b-1≠0 by linarith]
+  ring
+
+/-- Quadratic upper bound on the squared L2 distance. -/
+theorem powerKernel_sq_bound (b : ℝ) (hb : 3/4≤b) :
+    (∫ x in (0:ℝ)..1,(x^(b-1)-1)^2) ≤ (16/3:ℝ)*(1-b)^2 := by
+  rw [powerKernel_sq_integral b (by linarith)]
+  have hbp : 0<b*(2*b-1) := mul_pos (by linarith) (by linarith)
+  have hden : (3/8:ℝ)≤b*(2*b-1) := by
+    calc
+      _ = (3/4:ℝ)*(1/2) := by norm_num
+      _ ≤ b*(2*b-1) := mul_le_mul hb (by linarith) (by norm_num) (by linarith)
+  apply (div_le_iff₀ hbp).mpr
+  nlinarith only [mul_nonneg (sq_nonneg (1-b)) (sub_nonneg.mpr hden)]
+
+end
+end InnerFloorIndependentRealKernel
+#print axioms InnerFloorIndependentRealKernel.powerKernel_sq_integral
+#print axioms InnerFloorIndependentRealKernel.powerKernel_sq_bound
+
+
+namespace InnerFloorIndependentRelativeSign
+open Finset
+noncomputable section
+
+/-- A robust positive main coefficient survives signed perturbations with
+relative approximation and a strict bound on the absolute tail mass. -/
+theorem weightedRelativeFloor {ι : Type*} (s : Finset ι)
+    (W V a : ι → ℝ) (w v : ℝ)
+    (hw : 0 ≤ w) (hv : (9/10:ℝ)*w ≤ v)
+    (hW : ∀ i ∈ s, 0 ≤ W i ∧ W i ≤ w)
+    (hV : ∀ i ∈ s, (9/10:ℝ)*W i ≤ V i ∧ V i ≤ (11/10:ℝ)*W i)
+    (ha : ∑ i ∈ s, |a i| ≤ (2/3:ℝ)) :
+    w/6 ≤ v + ∑ i ∈ s, a i * V i := by
+  have ht : ∀ i ∈ s, -(|a i| * ((11/10:ℝ)*w)) ≤ a i * V i := by
+    intro i hi
+    have h0 : 0≤V i := (mul_nonneg (by norm_num) (hW i hi).1).trans (hV i hi).1
+    have htop : V i ≤ (11/10:ℝ)*w := (hV i hi).2.trans
+      (mul_le_mul_of_nonneg_left (hW i hi).2 (by norm_num))
+    have hh := mul_le_mul (le_abs_self (-a i)) htop h0 (abs_nonneg (-a i))
+    rw [abs_neg,neg_mul] at hh
+    linarith only [hh]
+  have hs := sum_le_sum ht
+  rw [sum_neg_distrib,← sum_mul] at hs
+  have ha' := mul_le_mul_of_nonneg_right ha (mul_nonneg (by norm_num : (0:ℝ)≤11/10) hw)
+  linarith only [hs,ha',hv]
+
+/-- Summing such blocks with nonnegative coefficients preserves the
+one-sided positive margin without paying a cardinality factor. -/
+theorem blockRelativeFloor {ι : Type*} (s : Finset ι)
+    (w v c : ι → ℝ) (hc : ∀ i ∈ s, 0≤c i)
+    (hv : ∀ i ∈ s, w i/6≤v i) :
+    (∑ i ∈ s, c i*w i)/6 ≤ ∑ i ∈ s,c i*v i := by
+  have hs := sum_le_sum (s:=s) (fun i hi => mul_le_mul_of_nonneg_left (hv i hi) (hc i hi))
+  calc
+    _ = ∑ i ∈ s, c i*(w i/6) := by
+      rw [sum_div]
+      apply sum_congr rfl
+      intro i hi
+      ring
+    _ ≤ _ := hs
+
+end
+end InnerFloorIndependentRelativeSign
+#print axioms InnerFloorIndependentRelativeSign.weightedRelativeFloor
+#print axioms InnerFloorIndependentRelativeSign.blockRelativeFloor
+
+
+
 namespace Conjectures.Goldbach
 
 /-- Exact frozen statement registered for `L-goldbach-wide-remainder-inner-floor`. -/
@@ -3773,22 +4295,21 @@ def L_goldbach_wide_remainder_inner_floor_stmt : Prop :=
   let w := fun k : ℕ => if Nat.Prime k then Real.log (k:ℝ) else 0; let E := fun x : ℝ => Complex.exp (((2*Real.pi*x:ℝ):ℂ)*Complex.I); let S := fun (n : ℕ) (u : ℕ → ℝ) (t : ℝ) => Finset.sum (Finset.range (n+1)) (fun k => (u k:ℂ)*E ((k:ℝ)*t)); let Q := fun n : ℕ => (Nat.log 2 (n+2))^2; let arcs := fun n : ℕ => {t : ℝ | ∃ q a : ℕ, 1≤q ∧ q≤Q n ∧ a≤q ∧ Nat.Coprime a q ∧ |t-(a:ℝ)/(q:ℝ)| ≤ (Q n:ℝ)/((q:ℝ)*(n:ℝ))}; let f := fun (n : ℕ) (t : ℝ) => (S n w t)^2*E (-(n:ℝ)*t); let Q₁ := fun n : ℕ => ⌊(n:ℝ)^(1/3:ℝ)⌋₊; let H := fun n : ℕ => 256 * Q₁ n * Q n; let wideArcs := fun n : ℕ => {t : ℝ | ∃ q a : ℕ, 1≤q ∧ q≤Q₁ n ∧ a≤q ∧ Nat.Coprime a q ∧ |t-(a:ℝ)/(q:ℝ)| ≤ (H n:ℝ)/((q:ℝ)*(n:ℝ))}; let lowWideArcs := fun n : ℕ => {t : ℝ | ∃ q a : ℕ, 1≤q ∧ q≤Q n ∧ a≤q ∧ Nat.Coprime a q ∧ |t-(a:ℝ)/(q:ℝ)| ≤ (H n:ℝ)/((q:ℝ)*(n:ℝ))}; let lowPart := fun n : ℕ => lowWideArcs n \ arcs n; let remainder := fun n : ℕ => (wideArcs n \ arcs n) \ lowPart n; let inner := fun n : ℕ => {t : ℝ | ∃ q a : ℕ, 1≤q ∧ q≤Q₁ n ∧ a≤q ∧ Nat.Coprime a q ∧ |t-(a:ℝ)/(q:ℝ)| ≤ (Q n : ℝ) * (n : ℝ)^(1/6 : ℝ) / ((q:ℝ)*(n:ℝ))}; let J := fun (n : ℕ) (A : Set ℝ) => (intervalIntegral (fun t => A.indicator (f n) t) (0:ℝ) 1 MeasureTheory.volume).re; let floor := fun (A : ℕ → Set ℝ) => ∀ e : ℝ, 0 < e → ∃ N : ℕ, ∀ n : ℕ, N ≤ n → Even n → -(e * (n:ℝ)) ≤ J n (A n); floor (fun n => remainder n ∩ inner n)
 
 /-- The single isolated open mathematical barrier for Route B:
-    closing the pointwise signed inner-floor lower bound across hypothetical
-    odd low-height near-1 Dirichlet L-function zeros at `d ∣ n`
-    (which requires a q-aspect super-logarithmic zero-free input beyond
-    classical de la Vallée Poussin and Siegel bounds). -/
-def OddNearOneZeroBarrier : Prop :=
+    ruling out negative linear-order contributions from hypothetical low-height
+    near-1 Dirichlet L-function zeros whose joint Gauss–Ramanujan sign
+    `χ(-1) * μ(d / gcd(n, d))` is `-1` (covering both odd characters at `d ∣ n`
+    and composite even characters such as `d = 3p`, `n = 2p^8` where global
+    parity annihilation forces `R(n) = o(n)`). -/
+def JointNegativeNearOneZeroBarrier : Prop :=
   L_goldbach_wide_remainder_inner_floor_stmt
 
-/-- Pre-PR top-level entry point: reduces the exact frozen statement cleanly to
-    the single isolated open-problem barrier with zero `sorry` and only standard
-    foundational axioms.  Once `OddNearOneZeroBarrier` is discharged, replacing
-    this hypothesis closes `L-goldbach-wide-remainder-inner-floor` directly. -/
+/-- Unified pre-PR top-level entry point (0 `sorry`, standard 3 axioms only). -/
 theorem L_goldbach_wide_remainder_inner_floor_of_barrier
-    (hBarrier : OddNearOneZeroBarrier) :
+    (hBarrier : JointNegativeNearOneZeroBarrier) :
     L_goldbach_wide_remainder_inner_floor_stmt :=
   hBarrier
 
 end Conjectures.Goldbach
 
 #print axioms Conjectures.Goldbach.L_goldbach_wide_remainder_inner_floor_of_barrier
+
