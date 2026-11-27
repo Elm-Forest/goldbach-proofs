@@ -62,8 +62,11 @@ theorem denominatorBandEnd_succ_le_double (Q A j : ℕ) :
   by_cases h : A≤Q*2^j
   · rw [min_eq_left h]
     exact (min_le_left ..).trans (by omega)
-  · rw [min_eq_right (by omega)]
-    exact (min_le_right ..).trans_eq (by ring)
+  · have hm : min A (Q*2^j) = Q*2^j := min_eq_right (le_of_not_ge h)
+    rw [hm]
+    calc
+      _ ≤ Q*(2^j*2) := min_le_right _ _
+      _ = _ := by ring
 
 theorem mediumCellEnergy_dyadic_sum (n Q A K : ℕ) (u : ℝ)
     (hQA : Q≤A) (hcover : A≤Q*2^K) :
@@ -82,8 +85,7 @@ theorem mediumCellEnergy_dyadic_sum (n Q A K : ℕ) (u : ℝ)
       simp [mediumCellEnergy,sum_mediumIndices]
     | succ k ih =>
       have hq : Q≤denominatorBandEnd Q A k := by
-        rw [← h0]
-        exact denominatorBandEnd_mono Q A (Nat.zero_le _)
+        exact h0.ge.trans (denominatorBandEnd_mono Q A (Nat.zero_le k))
       rw [mediumCellEnergy_split n Q (denominatorBandEnd Q A k)
         (denominatorBandEnd Q A (k+1)) u hq
           (denominatorBandEnd_mono Q A (Nat.le_succ _)),ih,sum_range_succ]

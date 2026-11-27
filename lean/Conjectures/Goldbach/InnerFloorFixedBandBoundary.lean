@@ -26,8 +26,7 @@ theorem mediumCellEnergy_fixed_sum (n : ℕ) (u : ℝ)
       simp [mediumCellEnergy,sum_mediumIndices]
     | succ k ih =>
       have hq : innerCutoff n ≤ fixedBandEnd n k := by
-        rw [← h0]
-        exact fixedBandEnd_mono n hn (Nat.zero_le _)
+        exact h0.ge.trans (fixedBandEnd_mono n hn (Nat.zero_le k))
       rw [mediumCellEnergy_split n (innerCutoff n) (fixedBandEnd n k)
         (fixedBandEnd n (k+1)) u hq
         (fixedBandEnd_mono n hn (Nat.le_succ _)),ih,sum_range_succ]
