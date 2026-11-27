@@ -88,9 +88,11 @@ theorem centeredIntervalEnergy_le (a : ℤ → ℂ) (M : ℤ) (N q : ℕ)
           simp only [div_eq_mul_inv,one_div]
           congr 1
           congr 1
-          apply sum_congr rfl
-          intro u _
-          rfl
+          apply sum_congr
+          · ext u
+            simp
+          · intro u _
+            rfl
 
 /-- For any interval of N terms, the total centered reduced numerator
 energy has at most a quadratic logarithmic model cost. -/

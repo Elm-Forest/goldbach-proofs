@@ -12,19 +12,29 @@ theorem positiveBlockSum_le (f : ℕ → ℝ) (hf : ∀ y, 0 ≤ f y)
       (∑ y∈Ico Z (2*Z),f y) ≤ M*(Z:ℝ)) :
     (∑ y∈Ico X N,f y) ≤ 2*M*(N:ℝ) := by
   have H : ∀ L : ℕ, ∀ Z : ℕ, X ≤ Z → N-Z ≤ L →
-      (∑ y∈Ico Z N,f y) ≤ M*(2*(N:ℝ)-(min Z N:ℝ)) := by
+      (∑ y∈Ico Z N,f y) ≤ M*(2*(N:ℝ)-((min Z N:ℕ):ℝ)) := by
     intro L
     induction L with
     | zero =>
       intro Z hZ hL
       have hNZ : N ≤ Z := by omega
-      simp only [Nat.Ico_eq_empty_of_le hNZ,sum_empty,min_eq_right hNZ]
+      have hI : Ico Z N = ∅ := by
+        apply eq_empty_iff_forall_notMem.mpr
+        intro y hy
+        have hh := mem_Ico.mp hy
+        omega
+      simp only [hI,sum_empty,min_eq_right hNZ]
       have hN : 0 ≤ (N:ℝ) := Nat.cast_nonneg _
       nlinarith only [mul_nonneg hM hN]
     | succ L ih =>
       intro Z hZ hL
       by_cases hNZ : N ≤ Z
-      · simp only [Nat.Ico_eq_empty_of_le hNZ,sum_empty,min_eq_right hNZ]
+      · have hI : Ico Z N = ∅ := by
+          apply eq_empty_iff_forall_notMem.mpr
+          intro y hy
+          have hh := mem_Ico.mp hy
+          omega
+        simp only [hI,sum_empty,min_eq_right hNZ]
         have hN : 0 ≤ (N:ℝ) := Nat.cast_nonneg _
         nlinarith only [mul_nonneg hM hN]
       have hZN : Z < N := by omega
@@ -55,8 +65,7 @@ theorem positiveBlockSum_le (f : ℕ → ℝ) (hf : ∀ y, 0 ≤ f y)
         exact le_rfl
   have h := H (N-X) X le_rfl le_rfl
   apply h.trans
-  have hm : 0 ≤ (min X N:ℕ) := Nat.zero_le _
-  have hm' : (0:ℝ) ≤ (min X N:ℝ) := Nat.cast_nonneg _
+  have hm' : (0:ℝ) ≤ ((min X N:ℕ):ℝ) := Nat.cast_nonneg _
   nlinarith only [mul_nonneg hM hm']
 
 end
