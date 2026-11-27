@@ -64,4 +64,19 @@ theorem acceptedWindowScaleExponent {a b c : ℝ}
     2*a+(7/12)*b-c ≤ -(1/200) := by
   rcases hc with hc | hc <;> linarith
 
+
+/-- With delta=X^(2/3) and U of order X^(3/2), all three
+smoothed explicit-formula remainders have power slack after taking
+the square root of the number of primitive characters. -/
+theorem smoothingBudget {a b c : ℝ}
+    (ha : 0 ≤ a) (ha' : a ≤ 1/5)
+    (hb : c ≤ b) (hb' : b ≤ 1)
+    (hc : 5/6 - 1/1000 + a ≤ c ∨ 99/100 ≤ c) :
+    a+(2/3)*b-c ≤ -(1/10) ∧
+    a-b/6-c ≤ -(1/10) ∧
+    3*a-b/6-c ≤ -(1/10) ∧
+    a+(3/2)*b ≤ 2*b := by
+  rcases hc with hc | hc <;>
+    exact ⟨by linarith, by linarith, by linarith, by linarith⟩
+
 end InnerFloorResearch.DensityBudget

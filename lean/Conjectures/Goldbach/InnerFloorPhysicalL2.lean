@@ -186,7 +186,7 @@ theorem physical_one_L2 (A : ℝ → ℂ) (hA : Continuous A) {η x T : ℝ}
       (((hA.norm.pow 2).const_mul _).integrableOn_Icc.mono_set hBound) hP ?_
     intro t ht
     have hk := window_norm_le hη hη' (by norm_num : (0:ℝ)<1)
-      (by norm_num : (1:ℝ) ∈ Icc 1 (4*1)) hT (hBand t ht)
+      (by norm_num : (1:ℝ) ∈ Set.Icc 1 (4*1)) hT (hBand t ht)
     simp only [Real.sqrt_one, mul_one] at hk
     rw [norm_mul, mul_pow, mul_comm (‖A t‖^2)]
     exact mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (norm_nonneg _) hk 2) (sq_nonneg _)
@@ -258,7 +258,7 @@ theorem weighted_box_L2 {ι : Type*} (I : Finset ι) (A : ι → ℝ → ℂ)
     intro i hi
     apply physical_one_L2 (A i) (hA i hi) hη hη' hx0 hT (hP i hi)
     · intro t ht
-      exact abs_le.mp ((hBand i hi ht).2)
+      exact abs_le.mp (by linarith [(hBand i hi ht).2] : |t| ≤ 2*T)
     · intro t ht
       exact (hBand i hi ht).1
   calc

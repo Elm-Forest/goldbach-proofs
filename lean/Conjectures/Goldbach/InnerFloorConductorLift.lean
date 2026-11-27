@@ -114,8 +114,8 @@ theorem primeWindowCharacterError {q : ℕ} [NeZero q] (y h : ℝ)
   · rw [sum_units_eq_sum
       (fun r : ZMod q => (ShortAP.theta q r y h : ℂ)*χ r)
       (fun r hr => by rw [MulChar.map_nonunit χ hr, mul_zero])]
-    simp only [ShortAP.theta, Complex.ofReal_sum, sum_filter]
-    simp_rw [sum_mul, ite_mul, zero_mul]
+    simp only [ShortAP.theta, Complex.ofReal_sum, sum_filter, apply_ite,
+      Complex.ofReal_zero, sum_mul, ite_mul, zero_mul]
     rw [sum_comm]
     apply sum_congr rfl
     intro k _
