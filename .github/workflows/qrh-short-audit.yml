@@ -137,6 +137,19 @@ jobs:
           s=s[:i]+helper+'set_option maxHeartbeats 20000000 in\n'+s[i:j]+proof+s[k:]
           p.write_text(s)
           print("Applied two-root compatibility patch")
+          edit('RellichKondrachov/Analysis/FunctionalSpaces/Sobolev/Euclidean/L2Compactness/Smoothing.lean',[
+           ('(s := K) (f := fun x : E => u x) hKm).2 hu',
+            '(s := K) (f := fun x : E => u x) hKm.nullMeasurableSet).2 hu')
+          ])
+          def resource_budget(name, budget):
+              p=root/name
+              lines=p.read_text().splitlines(keepends=True)
+              i=max(i for i,l in enumerate(lines) if l.startswith('import '))+1
+              lines.insert(i,'\nset_option maxHeartbeats '+str(budget)+'\n')
+              p.write_text(''.join(lines))
+          resource_budget('OAI/NumberTheory/DirichletL/Poisson/BinaryGaussian.lean',10000000)
+          resource_budget('RellichKondrachov/Analysis/FunctionalSpaces/Sobolev/Euclidean/L2Compactness/Approximation.lean',10000000)
+          print("Applied short round three")
           PY
           git diff --stat
           git diff > /tmp/short-qrh/port-short.diff
