@@ -2,7 +2,7 @@ name: Lean preflight (conductor-sensitive projection)
 on:
   push:
     branches:
-      - cloud-preflight/inner-reduced-gauss-20261127
+      - cloud-preflight/inner-density-budget-20261127
 permissions:
   contents: read
 jobs:
@@ -27,5 +27,5 @@ jobs:
         run: |
           set -euo pipefail
           export PATH="$HOME/.elan/bin:$PATH"
-          lake build Conjectures.Goldbach.InnerFloorReducedGaussEnergy Conjectures.Goldbach.InnerFloorConductorLift Conjectures.Goldbach.InnerFloorPhysicalL2
-          echo "PREFLIGHT PASS: reduced Gauss energy, conductor lift, and regular-box physical L2"
+          lake env lean Conjectures/Goldbach/InnerFloorDensityBudget.lean
+          echo "PREFLIGHT PASS: fixed-strip zero-density exponent budget"
