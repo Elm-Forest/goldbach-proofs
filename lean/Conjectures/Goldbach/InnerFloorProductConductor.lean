@@ -87,8 +87,10 @@ theorem shiftedGauss_productConductor (χ : DirichletCharacter ℂ q)
       change Real.sqrt (d:ℝ)*((m:ℝ)*(1+Real.log q)) =
         (q:ℝ)*(1+Real.log q)/Real.sqrt (d:ℝ)
       apply (eq_div_iff hroot.ne').2
-      rw [hqR,← hs]
-      ring
+      calc
+        _ = (Real.sqrt (d:ℝ))^2 * ((m:ℝ)*(1+Real.log q)) := by ring
+        _ = (d:ℝ)*((m:ℝ)*(1+Real.log q)) := by rw [hs]
+        _ = _ := by rw [hqR]; ring
 
 /-- The high-product-conductor part of the signed quadratic form has a
 uniform square-root saving, independent of gcd(n,q). -/

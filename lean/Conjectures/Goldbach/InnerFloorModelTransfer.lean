@@ -167,7 +167,7 @@ theorem mediumIntegral_eq_sum {n Q A : ℕ} {u : ℝ} (hn : 0 < n) (hu : 0 ≤ u
     · rintro ⟨⟨i,hi,ha⟩,ht⟩
       exact ⟨i,hi,ha,ht⟩
   rw [mediumIntegral, intervalIntegral.integral_of_le zero_le_one,
-    setIntegral_indicator (measurable_mediumBand n Q A u), ← hUnion]
+    setIntegral_indicator (measurable_mediumBand n Q A u), Set.inter_comm (Set.Ioc 0 1) (mediumBand Q A u n), ← hUnion]
   exact integral_biUnion_finset (mediumIndices Q A) (fun i _ => measurable_arcCell n u i)
     (arcCells_disjoint hn hu hsep) (fun i _ => (hf.intervalIntegrable 0 1).1.mono_set
       Set.inter_subset_right)

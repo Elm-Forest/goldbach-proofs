@@ -13,13 +13,13 @@ noncomputable section
 set_option maxHeartbeats 1500000
 
 def leftIndices (χ : PrimitiveComplexCharacter) (U : ℝ) : Finset ℕ :=
-  ((V1 χ).V14 U).filter fun i => ((V1 χ).zeros i).re ≤ 1/2
+  ((V1 χ).V14 U).filter fun i => ((V1 χ).zeros i).re ≤ (2:ℝ)⁻¹
 
 def rightGoodIndices (χ : PrimitiveComplexCharacter) (U c : ℝ) : Finset ℕ :=
-  ((V1 χ).V14 U).filter fun i => 1/2 < ((V1 χ).zeros i).re ∧ ((V1 χ).zeros i).re ≤ c
+  ((V1 χ).V14 U).filter fun i => (2:ℝ)⁻¹ < ((V1 χ).zeros i).re ∧ ((V1 χ).zeros i).re ≤ c
 
 def rightBadIndices (χ : PrimitiveComplexCharacter) (U c : ℝ) : Finset ℕ :=
-  ((V1 χ).V14 U).filter fun i => 1/2 < ((V1 χ).zeros i).re ∧ c < ((V1 χ).zeros i).re
+  ((V1 χ).V14 U).filter fun i => (2:ℝ)⁻¹ < ((V1 χ).zeros i).re ∧ c < ((V1 χ).zeros i).re
 
 theorem zeroWindow_partition (χ : PrimitiveComplexCharacter) (U c h y : ℝ) :
     zeroWindow χ ((V1 χ).V14 U) h y =
@@ -32,7 +32,7 @@ theorem zeroWindow_partition (χ : PrimitiveComplexCharacter) (U c h y : ℝ) :
   rw [← sum_add_distrib,← sum_add_distrib]
   apply sum_congr rfl
   intro i _
-  by_cases hl : ((V1 χ).zeros i).re ≤ 1/2
+  by_cases hl : ((V1 χ).zeros i).re ≤ (2:ℝ)⁻¹
   · simp [hl,not_lt_of_ge hl]
   · have hr := lt_of_not_ge hl
     by_cases hg : ((V1 χ).zeros i).re ≤ c
@@ -105,11 +105,11 @@ theorem fullSpectrumEnergyWithResidual (B : ℕ) :
   have hL : 0<Real.log X := Real.log_pos (by linarith)
   have hleft := h₁ Q hQ K X h hX1 hh hhX hscale hlog F hF
     (fun χ => leftIndices χ U)
-    (fun χ _ => filter_subset _ _) (fun χ _ i hi => (mem_filter.mp hi).2)
+    (fun χ _ => filter_subset _ _) (fun χ _ i hi => by simpa only [one_div] using (mem_filter.mp hi).2)
   have hright := h₂ Q K X h hQ hX2 hh hhX hscale hlog F hF
     (fun χ => rightGoodIndices χ U c)
     (fun χ _ => filter_subset _ _)
-    (fun χ _ i hi => ⟨(mem_filter.mp hi).2.1.le,(mem_filter.mp hi).2.2⟩)
+    (fun χ _ i hi => ⟨by simpa only [one_div] using (mem_filter.mp hi).2.1.le,(mem_filter.mp hi).2.2⟩)
   have hleft' : zeroFamilyEnergy F (fun χ => leftIndices χ U) X h ≤
       C₁*h^2*X/(Real.log X)^B := hleft
   have hright' : zeroFamilyEnergy F (fun χ => rightGoodIndices χ U c) X h ≤
@@ -118,16 +118,46 @@ theorem fullSpectrumEnergyWithResidual (B : ℕ) :
   have hleft'' : zeroFamilyEnergy F (fun χ => leftIndices χ U) X h ≤
       C₁*((K+1:ℕ):ℝ)^2*h^2*X/(Real.log X)^B := by
     apply hleft'.trans
-    gcongr
-    nlinarith
+    apply div_le_div_of_nonneg_right _ (by positivity)
+    apply mul_le_mul_of_nonneg_right _ hXp.le
+    apply mul_le_mul_of_nonneg_right _ (sq_nonneg h)
+    calc
+      C₁ = C₁*1 := by ring
+      _ ≤ _ := mul_le_mul_of_nonneg_left (by nlinarith only [hk,sq_nonneg (((K+1:ℕ):ℝ)-1)]) hC₁.le
   calc
     _ ≤ _ := fullSpectrumSplit F U c X h hXp hh.le hhX
     _ ≤ 3*(C₁*((K+1:ℕ):ℝ)^2*h^2*X/(Real.log X)^B +
       C₂*((K+1:ℕ):ℝ)^2*h^2*X/(Real.log X)^B +
       zeroFamilyEnergy F (fun χ => rightBadIndices χ U c) X h) :=
-      mul_le_mul_of_nonneg_left (add_le_add_right (add_le_add hleft'' hright') _)
+      mul_le_mul_of_nonneg_left (add_le_add_left (add_le_add hleft'' hright') _)
         (by norm_num)
     _ = _ := by ring
+
+
+/-- Any fixed positive strip gap, not only 7/8, eliminates the bad packet
+eventually. The input is a genuine hypothesis and is not assumed by the
+unconditional residual theorem. -/
+theorem eventually_badIndices_empty_of_uniform_gap (A : ℕ)
+    (σ : ℝ) (hσ : σ < 1)
+    (hgap : ∀ (χ : PrimitiveComplexCharacter) (i : ℕ),
+      ((V1 χ).zeros i).re ≤ σ) :
+    ∀ᶠ X : ℝ in atTop, ∀ (χ : PrimitiveComplexCharacter) (U : ℝ),
+      rightBadIndices χ U (1-V1l.V2j A X)=∅ := by
+  have ht : Tendsto (fun X : ℝ => Real.log (Real.log X) / Real.log X)
+      atTop (𝓝 0) :=
+    Real.isLittleO_log_id_atTop.tendsto_div_nhds_zero.comp Real.tendsto_log_atTop
+  have hc : Tendsto (V1l.V2j A) atTop (𝓝 0) := by
+    have hm := ht.const_mul (3 * (A+14 : ℕ) : ℝ)
+    simp only [mul_zero] at hm
+    convert hm using 1
+    ext X
+    simp only [V1l.V2j, mul_div_assoc]
+  filter_upwards [hc.eventually (gt_mem_nhds (sub_pos.mpr hσ))] with X hδ
+  intro χ U
+  apply Finset.eq_empty_iff_forall_notMem.mpr
+  intro i hi
+  have hbad := (Finset.mem_filter.mp hi).2.2
+  linarith [hgap χ i]
 
 end
 end InnerFloorResearch
