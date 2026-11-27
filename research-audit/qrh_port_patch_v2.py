@@ -98,13 +98,25 @@ proof="""  let p : ℕ := (volume : Measure ℝ).integrablePower
     exact hsource i (hi.trans (Nat.zero_le _))
   have hK : ∀ i ≤ K, S*((SchwartzMap.seminorm ℝ 0 i) g+
       (SchwartzMap.seminorm ℝ p i) g) ≤ C := hsource
-  have ha : S*x ≤ a := uniform_fourier_seminorm_transfer g 0 S C hS hC h0
-  have hb : S*y ≤ b := uniform_fourier_seminorm_transfer g K S C hS hC hK
+  have ha : S*x ≤ a := by
+    simpa only [x,a,V,p,Nat.cast_zero,Nat.cast_one] using
+      uniform_fourier_seminorm_transfer g 0 S C hS hC h0
+  have hb : S*y ≤ b := by
+    simpa only [y,b,V,p,K,Nat.cast_add,Nat.cast_one] using
+      uniform_fourier_seminorm_transfer g K S C hS hC hK
   have hm : (∫ t : ℝ, ‖t‖ ^ J * ‖(𝓕 g) t‖) ≤ V*(x+y) :=
     fourier_coefficient_moment g J
-  change S*(∫ t : ℝ, ‖t‖ ^ J * ‖(𝓕 g) t‖) ≤ V*(a+b)
-  exact scaled_moment_combine hS hV hm ha hb
+  have result := scaled_moment_combine hS hV hm ha hb
+  simpa only [V,a,b,p,K,Nat.cast_add,Nat.cast_one,Nat.cast_zero] using result
 """
 # Only replace the proof body; the original theorem statement remains byte-for-byte.
 s=s[:i]+helper+s[i:j]+proof+s[k:]
+p.write_text(s)
+
+# Round five: new deterministic resource failures in Approximation.
+heartbeat('RellichKondrachov/Analysis/FunctionalSpaces/Sobolev/Euclidean/L2Compactness/Approximation.lean')
+# Give the exact same Fourier moment theorem extra budget, not weaker assumptions.
+p=root/'OAI/NumberTheory/DirichletL/Mellin/LogProfiles.lean'
+s=p.read_text()
+s=s.replace('theorem uniform_fourier_coefficient_moment', 'set_option maxHeartbeats 20000000 in\ntheorem uniform_fourier_coefficient_moment',1)
 p.write_text(s)
