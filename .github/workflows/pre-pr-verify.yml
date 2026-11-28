@@ -1,4 +1,4 @@
-name: Pre-PR cached kernel verification (WideRemainderInnerFloor + SignedFrozenReduction)
+name: Pre-PR cached kernel verification (WideRemainderInnerFloor single-gap closure)
 on:
   push:
     branches: [pre-pr/L-goldbach-wide-remainder-inner-floor-route-b]
@@ -7,10 +7,6 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [WideRemainderInnerFloor, InnerFloorSignedFrozenReduction]
     steps:
       - uses: actions/checkout@v4
       - name: Restore community build objects
@@ -28,38 +24,27 @@ jobs:
           export PATH="$HOME/.elan/bin:$PATH"
           cd lean
           lake exe cache get
-          if [ "${{ matrix.target }}" = "WideRemainderInnerFloor" ]; then
-            time lake build Conjectures.Goldbach.DyadicCellShortPrimeFloor
-          else
-            time lake build Conjectures.Goldbach.DyadicCellShortPrimeFloor Conjectures.Goldbach.ReflectionCharacterContraction PEqualNP.Outside.L_goldbach_frontier_type2_b1_b4 Conjectures.Goldbach.LowSkirtFromShortProgressions PEqualNP.Outside.L_goldbach_frontier_medcore_bv_band
-          fi
-      - name: Verify exact target in kernel
+          time lake build Conjectures.Goldbach.DyadicCellShortPrimeFloor Conjectures.Goldbach.ReflectionCharacterContraction PEqualNP.Outside.L_goldbach_frontier_type2_b1_b4 Conjectures.Goldbach.LowSkirtFromShortProgressions PEqualNP.Outside.L_goldbach_frontier_medcore_bv_band
+      - name: Verify unified single-file target in kernel
         run: |
           export PATH="$HOME/.elan/bin:$PATH"
           cd lean
-          target="${{ matrix.target }}"
-          case "$target" in
-            WideRemainderInnerFloor) echo "32fbe75a08979378e124ac1d3a3c72b99aa5cc5a8ee9f7e160572b87e1e10e7e  Conjectures/Goldbach/$target.lean" | sha256sum -c - ;;
-            InnerFloorSignedFrozenReduction) echo "249285c2242a6e181c11ee434be57f53c49476a7b80045c675b48dd1cb0d6cad  Conjectures/Goldbach/$target.lean" | sha256sum -c - ;;
-            *) exit 2 ;;
-          esac
-          time lake env lean "Conjectures/Goldbach/$target.lean" 2>&1 | tee "/tmp/$target.log"
-          python3 - "$target" << 'PY'
-          import sys, pathlib, re
-          t = sys.argv[1]
-          expected = {'WideRemainderInnerFloor': 73, 'InnerFloorSignedFrozenReduction': 1}
-          log = pathlib.Path('/tmp/' + t + '.log').read_text()
+          echo "367189a9639996aa7d5aff033c8d957d027b860d0a5f011b82ef78f7426bcb20  Conjectures/Goldbach/WideRemainderInnerFloor.lean" | sha256sum -c -
+          time lake env lean "Conjectures/Goldbach/WideRemainderInnerFloor.lean" 2>&1 | tee "/tmp/WideRemainderInnerFloor.log"
+          python3 - << 'PY'
+          import pathlib, re
+          log = pathlib.Path('/tmp/WideRemainderInnerFloor.log').read_text()
           assert 'sorryAx' not in log, 'Found sorryAx!'
           assert 'error:' not in log, 'Found error!'
           matches = re.findall(r'depends on axioms: \[([^\]]*)\]', log)
-          assert len(matches) == expected[t], f'Expected {expected[t]} axiom audits, got {len(matches)}'
+          assert len(matches) == 74, f'Expected 74 axiom audits, got {len(matches)}'
           for m in matches:
               axs = {a.strip() for a in m.split(',') if a.strip()}
               assert axs <= {'propext', 'Classical.choice', 'Quot.sound'}, f'Unexpected axioms: {axs}'
-          print(f'KERNEL AUDIT PASS {t}: {len(matches)} declarations, standard 3 axioms only!')
+          print(f'KERNEL AUDIT PASS WideRemainderInnerFloor: {len(matches)} declarations, standard 3 axioms only!')
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pre-pr-${{ matrix.target }}-log
-          path: /tmp/${{ matrix.target }}.log
+          name: pre-pr-WideRemainderInnerFloor-log
+          path: /tmp/WideRemainderInnerFloor.log
