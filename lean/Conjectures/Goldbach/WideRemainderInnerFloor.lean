@@ -9105,7 +9105,7 @@ theorem oddSquarefreeTotientTail (M : ℕ) (S : Finset ℕ)
     · intro p hp
       have hprime := Nat.prime_of_mem_primeFactors hp
       have hd := Nat.dvd_of_mem_primeFactors hp
-      have hpM := (Nat.le_of_dvd (by omega : 0<m) hd).trans hmM
+      have hpM := (Nat.le_of_dvd (by omega : 0 < m) hd).trans hmM
       have hpn : ¬2∣p := by
         intro hp2
         obtain ⟨k,hk⟩ := hp2.trans hd
@@ -9129,7 +9129,7 @@ theorem oddSquarefreeTotientTail (M : ℕ) (S : Finset ℕ)
     have hphi := Nat.totient_mul_prod_primeFactors m
     rw [Nat.prod_primeFactors_of_squarefree hsq,mul_comm m] at hphi
     have hφ : m.totient = ∏ p∈m.primeFactors,(p-1) :=
-      Nat.eq_of_mul_eq_mul_right (show 0<m by omega) hphi
+      Nat.eq_of_mul_eq_mul_right (show 0 < m by omega) hphi
     rw [hφ,Nat.cast_prod,← Finset.prod_pow]
     calc
       1 / (∏ p ∈ m.primeFactors, ((p-1:ℕ):ℝ)^2) =

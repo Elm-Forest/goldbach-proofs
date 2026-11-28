@@ -29,7 +29,7 @@ jobs:
         run: |
           export PATH="$HOME/.elan/bin:$PATH"
           cd lean
-          echo "367189a9639996aa7d5aff033c8d957d027b860d0a5f011b82ef78f7426bcb20  Conjectures/Goldbach/WideRemainderInnerFloor.lean" | sha256sum -c -
+          echo "46ccd084c1836f1c5f83c518d18d645e2e55544e3e00bf8980cc7ce5c646cebc  Conjectures/Goldbach/WideRemainderInnerFloor.lean" | sha256sum -c -
           time lake env lean "Conjectures/Goldbach/WideRemainderInnerFloor.lean" 2>&1 | tee "/tmp/WideRemainderInnerFloor.log"
           python3 - << 'PY'
           import pathlib, re
